@@ -21,6 +21,8 @@ The build creates the extension in `dist`.
 2. Turn on **Developer mode**, choose **Load unpacked**, and select the **dist** folder inside **browser-recipes**. You should see a **Browser Recipes** extension card.
 3. Keep the checkout where it is. Pin **Browser Recipes** in the browser’s Extensions menu so you can open the runner from the toolbar.
 
+After installing a read recipe and granting its site, open **Browser Recipes → Quick run** and click the recipe name to see its result. Quick run uses the default inputs. To enter a date range or other inputs, open **Settings → Installed library**, expand the adapter, and choose **Options** beside the recipe.
+
 ## Install the workflow and connect your calendars
 
 1. Open **Browser Recipes** from the toolbar. Choose **Browse workflows**, then **Install** beside **Copy Outlook events to Google Calendar**. In an existing installation, use **Settings → Browse community catalog**.

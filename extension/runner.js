@@ -1,3 +1,4 @@
+import {recipeContract} from './schema.js';
 import {recipeEditor} from './recipe-edit-ui.js';
 import {assertRecipeModelAccess, getWorkflows, getCatalog} from './settings.js';
 const form = document.querySelector('#runner');
@@ -25,6 +26,51 @@ const openApp = 'open-app';
 const launchParams = new URLSearchParams(location.search);
 let launchRecipe = launchParams.has('adapter') && launchParams.has('recipe')
   ? {adapter:launchParams.get('adapter'), id:launchParams.get('recipe')} : null;
+
+const requestedRead = sessionStorage.getItem('launch-read-recipe');
+sessionStorage.removeItem('launch-read-recipe');
+
+function canQuickRun(recipe) {
+  return recipe.effect === 'read' && !Object.values(recipe.inputs).some(input => input.required);
+}
+
+function selectTarget(adapterId, recipeId) {
+  const matches = tabs.filter(t => t.adapterIds.includes(adapterId));
+  tabPicker.value = matches.length === 1 ? String(matches[0].tabId) : openApp;
+  updateRecipes(adapterId + '/' + recipeId);
+  if (matches.length > 1) {
+    choose('Several app tabs are open. Choose the tab to use.');
+    tabPicker.focus();
+  }
+  return matches.length <= 1;
+}
+
+function renderQuickReads() {
+  const section = document.querySelector('#quick-reads');
+  const search = document.querySelector('#find-read');
+  const list = document.querySelector('#read-list');
+  list.replaceChildren();
+  section.hidden = !catalog.some(a => a.recipes.some(canQuickRun));
+  const query = search.value.trim().toLowerCase();
+  for (const adapter of catalog) {
+    for (const recipe of adapter.recipes.filter(canQuickRun)) {
+      const title = adapter.title + ' · ' + recipe.title;
+      if (!title.toLowerCase().includes(query)) continue;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = title;
+      button.onclick = () => {
+        if (controls.disabled) return;
+        clearResults();
+        inputKey = undefined;
+        if (selectTarget(adapter.id,recipe.id)) form.requestSubmit(document.querySelector('#start-run'));
+      };
+      list.append(button);
+    }
+  }
+  if (!list.childElementCount && query) list.textContent = 'No matching recipes.';
+}
+document.querySelector('#find-read').addEventListener('input',renderQuickReads);
 
 function choose(message, error = false) {
   status.textContent = message;
@@ -130,7 +176,12 @@ async function refresh() {
   const selected = tabPicker.value;
   choose('Loading available tabs and recipes…');
   try {
-    ({ catalog, tabs } = await request('runner.list'));
+    const [availableSites,installed] = await Promise.all([request('runner.list'),getCatalog()]);
+    tabs = availableSites.tabs;
+    const approved = new Set(availableSites.catalog.map(a => a.id));
+    catalog = installed.filter(a => approved.has(a.id)).map(adapter => ({
+      ...adapter,recipes:adapter.recipes.map(recipe => ({...recipe,...recipeContract(recipe)})),
+    }));
     tabPicker.replaceChildren(new Option('Choose a tab', ''));
     for (const { tabId, title, adapterIds } of tabs) {
       const sites = catalog.filter(adapter => adapterIds.includes(adapter.id)).map(adapter => adapter.origin);
@@ -142,13 +193,17 @@ async function refresh() {
     if (catalog.length) tabPicker.append(new Option('Find or open the app for my recipe', openApp));
     if (selected === openApp || tabs.some(item => String(item.tabId) === selected)) tabPicker.value = selected;
     else if (!tabs.length && catalog.length) tabPicker.value = openApp;
-    const available = launchRecipe && catalog.find(a => a.id === launchRecipe.adapter)?.recipes.some(r => r.id === launchRecipe.id);
+    renderQuickReads();
+    const available = launchRecipe && catalog.find(a => a.id === launchRecipe.adapter)?.recipes.find(r => r.id === launchRecipe.id);
     if (available) {
-      const matches = tabs.filter(t => t.adapterIds.includes(launchRecipe.adapter));
-      tabPicker.value = matches.length === 1 ? String(matches[0].tabId) : openApp;
-      updateRecipes(launchRecipe.adapter + '/' + launchRecipe.id);
+      const {adapter,id} = launchRecipe;
       launchRecipe = null;
-      if (matches.length > 1) choose('Several app tabs are open. Choose the tab to use.');
+      const ready = selectTarget(adapter,id);
+      if (ready && requestedRead === adapter + '/' + id && canQuickRun(available)) {
+        controls.disabled = false;
+        form.requestSubmit(document.querySelector('#start-run'));
+        return;
+      }
     } else updateRecipes();
     const noAccess = !catalog.length;
     document.querySelector('#first-workflow').hidden = !noAccess;
@@ -166,9 +221,8 @@ async function refresh() {
     }
   } catch (error) {
     choose(error.message, true);
-  } finally {
-    controls.disabled = false;
   }
+  controls.disabled = false;
 }
 
 async function attachmentInput(file, name) {
@@ -242,6 +296,7 @@ form.addEventListener('submit', async event => {
         link.href = href;
         link.textContent = 'Inspect run';
         status.append(link);
+        results.scrollIntoView({block:'nearest'});
       }
       return;
     }

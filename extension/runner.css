@@ -26,3 +26,6 @@ button:disabled { opacity: .55; cursor: default; }
 .launch-actions, .runner-header nav { display: flex; flex-wrap: wrap; gap: .6rem; }
 .retain { display: block; margin-block: .5rem; }
 .status { text-wrap: pretty; }
+
+#read-list { display: grid; gap: .35rem; max-height: 14rem; overflow: auto; margin: .5rem 0; }
+#read-list button { text-align: start; }

@@ -131,10 +131,24 @@ export async function initializeLibrary(refreshSettings) {
         if (editable) removal(recipe,'recipe',r,a.id);
         const row = element('div');
         row.className = 'installed-recipe';
-        const launch = element('a','Run recipe');
-        launch.href = 'runner.html?' + new URLSearchParams({adapter:a.id,recipe:r.id});
-        launch.setAttribute('aria-label','Run recipe: ' + r.title);
-        row.append(recipe,launch);
+        const url = 'runner.html?' + new URLSearchParams({adapter:a.id,recipe:r.id});
+        const ready = contract.effect === 'read' && !Object.values(contract.inputs).some(i => i.required);
+        const actions = element('div');
+        if (ready) {
+          const run = element('button','Run');
+          run.type = 'button';
+          run.setAttribute('aria-label','Run ' + r.title);
+          run.onclick = () => {
+            sessionStorage.setItem('launch-read-recipe',a.id + '/' + r.id);
+            location.assign(url);
+          };
+          actions.append(run,document.createTextNode(' '));
+        }
+        const launch = element('a',ready ? 'Options' : 'Set up run');
+        launch.href = url;
+        launch.setAttribute('aria-label','Set up ' + r.title);
+        actions.append(launch);
+        row.append(recipe,actions);
         panel.append(row);
       }
       if (editable) removal(panel,'adapter',a);
