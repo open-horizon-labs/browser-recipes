@@ -12,12 +12,12 @@ This repo contains the extension, recipe interpreter, and CLI. The companion cat
 2. Open **Settings → Browse community catalog**, install a recipe or workflow, and grant access to the sites it uses.
 3. Open the app, then open **Browser Recipes** and choose a recipe. For a workflow, open **Workflows**.
 
-For workflows that use ChatGPT, set up the local helper on your platform. On Linux, the optional terminal bridge lets scripts and agents call recipes. [ChatGPT setup](docs/chatgpt-agent.md) · [CLI setup](bridge/README.md)
+For workflows that use ChatGPT, set up the local helper on your platform. The optional terminal bridge lets scripts and agents call recipes. [ChatGPT setup](docs/chatgpt-agent.md) · [CLI setup](bridge/README.md)
 
 ## Features
 
 - **Run in a background tab.** Keep working in another tab while a recipe uses your signed-in session.
-- **Run recipes from the side panel.** Pick a recipe for your current tab. If the app needs sign-in, the run pauses and gives you a link to open it. On Linux, scripts and agents can also call recipes through the optional CLI and receive JSON. [CLI examples](bridge/README.md#run-by-account-label)
+- **Run recipes from the side panel.** Pick a recipe for your current tab. If the app needs sign-in, the run pauses and gives you a link to open it. Scripts and agents can also call recipes through the optional CLI and receive JSON. [CLI examples](bridge/README.md#run-by-account-label)
 - **Combine recipes across apps.** Pass results between recipes, use ChatGPT to filter or transform data, and pause for approval before a write.
 - **Read attachments through the signed-in session.** A recipe can fetch a document from an allowed app path. The extension extracts text from supported PDFs and Office files locally, or returns the file bytes as base64. [Attachment formats and limits](docs/recipes.md#attachments)
 - **Record a task to draft a recipe.** In developer mode, record your actions or let an agent inspect the page controls. The recording produces editable steps with placeholders for field values. Test the draft against the app before sharing it. [Authoring guide](docs/getting-started.md)
@@ -76,7 +76,7 @@ printf '%s\n' "$agenda" | jq -r '.outputs.events[] | .attributes["aria-label"] /
 
 ### Preview an Outlook to Google Calendar sync
 
-Compare Outlook and Google Calendar before copying events. In the extension, review the event data and give ChatGPT a filter such as “skip canceled meetings.” The Linux CLI can run the same preview. Here, `personal` is the Google Calendar account label. [Workflow definition](https://github.com/open-horizon-labs/browser-recipes-catalog/blob/main/workflows/outlook-to-google-calendar.json)
+Compare Outlook and Google Calendar before copying events. In the extension, review the event data and give ChatGPT a filter such as “skip canceled meetings.” The CLI can run the same preview. Here, `personal` is the Google Calendar account label. [Workflow definition](https://github.com/open-horizon-labs/browser-recipes-catalog/blob/main/workflows/outlook-to-google-calendar.json)
 
 ```sh
 browser-recipes workflow preview outlook-to-google-calendar \
@@ -94,9 +94,9 @@ Install **Check expense report and reimbursement status** to see the reports und
 
 ## Running on a managed desktop
 
-**Chrome remote debugging can stay disabled.** The extension uses Chrome’s scripting API to run steps in your signed-in tab. Grant access to each site in Browser Recipes settings. To run recipes from the Linux CLI, install the native messaging host. [Extension permissions](extension/manifest.json) · [Local bridge](bridge/README.md)
+**Chrome remote debugging can stay disabled.** The extension uses Chrome’s scripting API to run steps in your signed-in tab. Grant access to each site in Browser Recipes settings. To run recipes from the CLI, install the native messaging host. [Extension permissions](extension/manifest.json) · [Local bridge](bridge/README.md)
 
-Review an adapter before granting its origin. A recipe can submit data using your signed-in account, and local processes running as your Linux user can call the bridge while it is enabled. Discovery output and successful reads may contain private page content.
+Review an adapter before granting its origin. A recipe can submit data using your signed-in account, and programs running under your desktop account can call the bridge while it is enabled. Discovery output and successful reads may contain private page content.
 
 The browser and target tab must stay open. An adapter can target the main document or one declared, independently permitted frame. Check support for an app’s widgets, embedded frames, and flows that require a user gesture before relying on a recipe.
 

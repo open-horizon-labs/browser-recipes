@@ -10,7 +10,7 @@ The prototype let a person pick an open tab, run a recipe, and review the result
 
 A workflow runner must work in the user’s existing browser with remote debugging disabled. A runner that requires a Chrome DevTools Protocol (CDP) connection would rule out desktops where IT prohibits it, even if it could replay every recipe.
 
-On Linux, the CLI connects to a Unix socket private to the user. Chrome Native Messaging carries the request between the host and the extension. The host registration names the permitted extension ID. The extension checks both the exact origin approved in its settings and Chrome’s host permission before acting on the selected tab. Replay requires neither a debugging port nor the extension’s `debugger` permission. Processes running as the same Linux user can call the bridge while it is enabled. [Host registration](../bridge/browser-recipes) · [Origin checks](../extension/access.js)
+The CLI connects to a private local socket. Chrome Native Messaging carries the request between the host and the extension. The host registration names the permitted extension ID. The extension checks both the exact origin approved in its settings and Chrome’s host permission before acting on the selected tab. Replay requires neither a debugging port nor the extension’s `debugger` permission. Programs running under the same desktop account can call the bridge while it is enabled. [Host registration](../bridge/browser-recipes) · [Origin checks](../extension/access.js)
 
 ## Verify without taking over the desktop
 

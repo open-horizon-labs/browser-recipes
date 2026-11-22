@@ -1,6 +1,6 @@
 # Run recipes from the terminal
 
-The terminal bridge ships with installation support for Linux. The CLI sends JSON over a Unix socket to a native messaging host. The host forwards requests to the extension and returns its replies. The socket is private to your Linux user. Any process running as that user can send commands while the bridge is connected.
+The terminal bridge ships with installation support for Linux. The CLI sends JSON over a Unix socket to a native messaging host. The host forwards requests to the extension and returns its replies. The socket is private to your desktop account. Any program running under that account can send commands while the bridge is connected.
 
 ## Connect a browser
 
