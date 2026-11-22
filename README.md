@@ -1,8 +1,8 @@
-# Tab Recipes
+# Browser Recipes
 
 Many web apps have no Model Context Protocol (MCP) server an agent can call. An agent can still use the app through a browser or computer-use tool. For a recurring task, that often means inspecting the same pages, finding the same controls, and deciding where to click on every run. Most computer-use tools also take over the active window and mouse pointer while the agent works.
 
-Tab Recipes lets an agent inspect the app once and save the navigation, actions, and checks as a JSON recipe. The Chromium extension executes those steps directly in the open tab, using its signed-in session. Replay needs no model call, leaves the foreground tab selected, and keeps your cursor free.
+Browser Recipes lets an agent inspect the app once and save the navigation, actions, and checks as a JSON recipe. The Chromium extension executes those steps directly in the open tab, using its signed-in session. Replay needs no model call, leaves the foreground tab selected, and keeps your cursor free.
 
 ## Where the CLI fits
 
@@ -12,12 +12,12 @@ A shell script runs outside Chrome. The Linux CLI sends its request through a lo
 
 ## Example: show today’s Outlook events from the shell
 
-Suppose a morning script needs to print your Outlook agenda. The following illustrates a proposed `today-events` recipe. The catalog currently ships an Outlook mail recipe. [Available Outlook recipes](https://github.com/open-horizon-labs/tab-recipes-catalog/tree/main/adapters/outlook)
+Suppose a morning script needs to print your Outlook agenda. The following illustrates a proposed `today-events` recipe. The catalog currently ships an Outlook mail recipe. [Available Outlook recipes](https://github.com/open-horizon-labs/browser-recipes-catalog/tree/main/adapters/outlook)
 
 With the calendar recipe installed, use the ID of your signed-in Outlook tab in place of `123`. This shell example uses `jq` to print the returned agenda text.
 
 ```sh
-agenda=$(./bridge/tab-recipes run '{"tabId":123,"adapterId":"outlook","recipeId":"today-events","inputs":{}}') || exit 1
+agenda=$(./bridge/browser-recipes run '{"tabId":123,"adapterId":"outlook","recipeId":"today-events","inputs":{}}') || exit 1
 printf '%s\n' "$agenda" | jq -er '.outputs.agenda'
 ```
 
@@ -41,33 +41,33 @@ The recipe opens Manage Expenses, checks the heading, and returns the visible te
 ]
 ```
 
-The adapter maps `manage-expenses` and `first-report` to CSS selectors on the US2 Concur origin. The caller receives the report text in `outputs.summary`. If Concur changes its markup, a contributor can update the selector and users can import the revised adapter. [Concur adapter and recipe](https://github.com/open-horizon-labs/tab-recipes-catalog/tree/main/adapters/concur)
+The adapter maps `manage-expenses` and `first-report` to CSS selectors on the US2 Concur origin. The caller receives the report text in `outputs.summary`. If Concur changes its markup, a contributor can update the selector and users can import the revised adapter. [Concur adapter and recipe](https://github.com/open-horizon-labs/browser-recipes-catalog/tree/main/adapters/concur)
 
-This repository contains the extension, interpreter, and Linux CLI. Adapters for Concur, Gmail, Outlook, and Hacker News live in the [community catalog](https://github.com/open-horizon-labs/tab-recipes-catalog).
+This repository contains the extension, interpreter, and Linux CLI. Adapters for Concur, Gmail, Outlook, and Hacker News live in the [community catalog](https://github.com/open-horizon-labs/browser-recipes-catalog).
 
 ## First run on Linux
 
 Use Node.js 22.13 or later, npm, Python 3.9 or later and Chrome or Chromium. Clone the two projects side by side.
 
 ```sh
-git clone https://github.com/open-horizon-labs/tab-recipes
-git clone https://github.com/open-horizon-labs/tab-recipes-catalog
-cd tab-recipes
+git clone https://github.com/open-horizon-labs/browser-recipes
+git clone https://github.com/open-horizon-labs/browser-recipes-catalog
+cd browser-recipes
 npm ci
 npm run build
-node ../tab-recipes-catalog/scripts/pack.mjs > /tmp/tab-recipes-catalog.json
+node ../browser-recipes-catalog/scripts/pack.mjs > /tmp/browser-recipes-catalog.json
 ```
 
 1. For this unpacked install, open the browser's Extensions page, enable Developer mode, choose **Load unpacked**, and select the generated `dist` directory.
-2. Copy the displayed extension ID. Run `./bridge/tab-recipes install YOUR_EXTENSION_ID` for Chrome, or append `--browser chromium` for Chromium.
+2. Copy the displayed extension ID. Run `./bridge/browser-recipes install YOUR_EXTENSION_ID` for Chrome, or append `--browser chromium` for Chromium.
 3. Open the extension options. Import the JSON array generated above, grant access to `https://news.ycombinator.com`, and enable the local bridge.
 4. Open Hacker News at `https://news.ycombinator.com/` in a tab. You can switch back to another tab.
 5. Run the commands below. Replace 123 with the Hacker News tab ID from `tabs`.
 
 ```sh
-./bridge/tab-recipes catalog
-./bridge/tab-recipes tabs
-./bridge/tab-recipes run '{"tabId":123,"adapterId":"hacker-news","recipeId":"front-page","inputs":{}}'
+./bridge/browser-recipes catalog
+./bridge/browser-recipes tabs
+./bridge/browser-recipes run '{"tabId":123,"adapterId":"hacker-news","recipeId":"front-page","inputs":{}}'
 ```
 
 A successful run returns a `runId` and the current headline in `outputs.headline`.

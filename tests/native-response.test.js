@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { nativeResponseFrames } from '../extension/native-response.js';
 
-const bridge = fileURLToPath(new URL('../bridge/tab-recipes', import.meta.url));
+const bridge = fileURLToPath(new URL('../bridge/browser-recipes', import.meta.url));
 const id = 'native-response-test';
 const maxFrameBytes = 1024 * 1024;
 const decodeInCli = [

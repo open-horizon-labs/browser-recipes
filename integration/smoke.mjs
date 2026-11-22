@@ -12,13 +12,13 @@ import { verifyAuthoring } from './authoring.mjs';
 const exec = promisify(execCallback);
 const root = fileURLToPath(new URL('../', import.meta.url));
 const workshopDir = path.join(root, 'integration/fixtures/workshop');
-const stage = await mkdtemp(path.join(tmpdir(), 'tab-recipes-'));
+const stage = await mkdtemp(path.join(tmpdir(), 'browser-recipes-'));
 const fixtureOrigin = 'http://127.0.0.1:8765';
 const runtimeDir = path.join(stage, 'runtime');
 const env = { ...process.env, XDG_RUNTIME_DIR: runtimeDir };
 const profile = path.join(stage, 'profile');
 const extension = path.join(stage, 'extension');
-const bridge = path.join(root, 'bridge/tab-recipes');
+const bridge = path.join(root, 'bridge/browser-recipes');
 let browser;
 let server;
 async function call(name, args = {}) {

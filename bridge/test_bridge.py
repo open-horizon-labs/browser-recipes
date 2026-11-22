@@ -11,7 +11,7 @@ import time
 import unittest
 
 
-CLI = Path(__file__).with_name("tab-recipes").resolve()
+CLI = Path(__file__).with_name("browser-recipes").resolve()
 EXTENSION_ID = "abcdefghijklmnop" * 2
 HEADER = struct.Struct("=I")
 

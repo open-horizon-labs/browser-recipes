@@ -6,26 +6,26 @@ The CLI sends JSON over a Unix socket to a native messaging host. The host forwa
 
 Use Python 3.9 or later.
 
-1. Load Tab Recipes as an unpacked extension and copy its ID from the browser's Extensions page.
+1. Load Browser Recipes as an unpacked extension and copy its ID from the browser's Extensions page.
 2. From the repository root, register the executable for that ID.
 
    ```sh
-   ./bridge/tab-recipes install YOUR_EXTENSION_ID
+   ./bridge/browser-recipes install YOUR_EXTENSION_ID
    ```
 
    For Chromium, add `--browser chromium`. The manifest uses the absolute
    path of this checkout. Register again if you move it.
-3. Open Tab Recipes Options and enable the local bridge. Only one browser connection can use the socket at a time.
+3. Open Browser Recipes Options and enable the local bridge. Only one browser connection can use the socket at a time.
 
 ## Commands
 
 ```sh
-./bridge/tab-recipes catalog
-./bridge/tab-recipes tabs
-./bridge/tab-recipes run '{"tabId":123,"adapterId":"example","recipeId":"read","inputs":{}}'
-./bridge/tab-recipes dev.inspect '{"tabId":123,"adapterId":"example"}'
-./bridge/tab-recipes dev.test - < test-request.json
-./bridge/tab-recipes dev.failures
+./bridge/browser-recipes catalog
+./bridge/browser-recipes tabs
+./bridge/browser-recipes run '{"tabId":123,"adapterId":"example","recipeId":"read","inputs":{}}'
+./bridge/browser-recipes dev.inspect '{"tabId":123,"adapterId":"example"}'
+./bridge/browser-recipes dev.test - < test-request.json
+./bridge/browser-recipes dev.failures
 ```
 
 Pass an argument object as a JSON string or use `-` to read JSON from stdin.
@@ -43,3 +43,5 @@ Disable the bridge in Options to disconnect. To unregister the host, delete the 
 ```sh
 python3 -m unittest discover -s bridge
 ```
+
+Existing installations can keep their registered host and socket. The original CLI path is an alias for `bridge/browser-recipes`. Keep an unpacked installation in its current directory to preserve its extension ID.
