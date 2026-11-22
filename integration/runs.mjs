@@ -45,7 +45,7 @@ export async function verifyRuns({call,failure,tab,target,foreground,active,exte
   assert.equal(removed.deleted,3);
   assert.equal((await call('runs.list')).some(r => r.runId === start.runId || r.parentRunId === start.runId),false);
   await target.goto(new URL('/signin.html',target.url()).href);
-  const needs = await call('runs.start',{kind:'recipe',adapterId:'workshop',recipeId:'read-ticket',tabId:tab.tabId,retainData:true});
+  const needs = await call('runs.start',{kind:'recipe',adapterId:'workshop',recipeId:'read-ticket',tabId:tab.tabId});
   assert.equal(needs.pending.tag,'auth');
   assert.equal(await active(),front);
   const still = await call('runs.resume',{runId:needs.runId,actionId:needs.pending.id,answer:{}});
@@ -58,9 +58,13 @@ export async function verifyRuns({call,failure,tab,target,foreground,active,exte
     await runsPage.waitForFunction(async id => (await chrome.tabs.query({active:true,currentWindow:true}))[0]?.id === id,tab.tabId,{timeout:5000});
     await target.goto(new URL('/ticket.html',target.url()).href);
     await runsPage.bringToFront();
-    await runsPage.getByText('Ticket 42',{exact:true}).first().waitFor({state:'attached'});
+    await runsPage.locator('.run-results').getByText('Ticket 42',{exact:true}).waitFor();
+    await runsPage.reload();
+    await runsPage.locator('.run-results').getByText('Ticket 42',{exact:true}).waitFor();
+    assert.equal(await runsPage.locator('#record > details').first().getAttribute('open'),null);
     const final = await call('runs.get',{runId:needs.runId,includeData:true});
     assert.equal(final.result.title,'Ticket 42');
+    assert.equal(final.entries,undefined);
     assert.equal(final.actions.length,still.actions.length);
     await foreground.bringToFront();
     assert.equal(await active(),front);

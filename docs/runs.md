@@ -42,7 +42,7 @@ For sign-in, choose **Open app in browser** on the request. Sign in on the site 
 
 ## Private results and history
 
-Run records keep timing, status, action tags and data-flow references locally. Private values needed to resume a shared run are available within the browser session. Request them with `includeData:true` only when needed. The reply that completes a run includes its result. To inspect the result later in the same browser session, enable result retention at start or pass `"retainData":true`. An ordinary history query omits payloads. Losing the browser session can end a paused run.
+Run records keep timing, status, action tags and data-flow references locally. Private values needed to resume a shared run are available within the browser session. Request them with `includeData:true` only when needed. The reply that completes a run includes its result. When you continue a paused run in the browser, Runs keeps its final result until the browser closes. To keep intermediate step data in the same session, enable result retention at start or pass `"retainData":true`. An ordinary history query omits payloads. Losing the browser session can end a paused run.
 
 ```sh
 ./bridge/browser-recipes runs.cancel '{"runId":"RUN_ID"}'

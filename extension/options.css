@@ -161,3 +161,9 @@ body main > details { border-block-start: 1px solid var(--line); padding-block: 
 .recipe-result { grid-column: 1 / -1; min-width: 0; padding: .65rem .8rem; background: var(--surface); }
 .recipe-result pre { white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto; max-height: 16rem; }
 .recipe-result h3 { margin: .6rem 0 .2rem; }
+
+.result-rows li { display: block; border-block-start: 1px solid var(--line); padding: .55rem 0; }
+.result-rows span { display: block; white-space: pre-wrap; overflow-wrap: anywhere; }
+.result-rows a { display: inline-block; margin-top: .25rem; }
+.run-results { padding: .75rem 1rem; background: var(--surface); border: 1px solid var(--line); border-radius: .5rem; }
+.run-results > h3:first-child { margin-top: 0; }

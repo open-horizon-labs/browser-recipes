@@ -1,3 +1,4 @@
+import {renderRecipeOutputs} from './recipe-outputs.js';
 import { watchTabs } from './watch-tabs.js';
 import { recipeEditor } from './recipe-edit-ui.js';
 import { chatgptAgentRequest } from './chatgpt-agent-transport.js';
@@ -339,8 +340,20 @@ async function renderRecord(record) {
   if (record.error) group.append(node('p', record.error.message ?? String(record.error)));
   if (record.interactive && record.status === 'running') group.append(node('p','Continue this step-by-step run in its original workflow window.'));
   if (record.pending) await renderPending(record, group);
+  if (record.result !== undefined) {
+    const result = node('section',undefined,'run-results');
+    result.append(node('h3','Results'));
+    if (record.result && typeof record.result === 'object' && !Array.isArray(record.result)) {
+      renderRecipeOutputs(record.result,result,urls);
+    } else showOutputs(record.result,result);
+    group.append(result);
+  } else if (record.status === 'completed') {
+    group.append(node('p','This run has no saved results. Run the recipe or workflow again to see its output.'));
+  }
+  const trace = node('details');
+  trace.append(node('summary','Run details'));
   if (record.steps?.length) {
-    group.append(node('h3','Steps'));
+    trace.append(node('h3','Steps'));
     const list = node('ol',undefined,'steps');
     for (const step of record.steps) {
       const row = node('li', step.label || step.title || step.id || step.stepId);
@@ -355,7 +368,7 @@ async function renderRecord(record) {
       if (step.outputs?.length) row.append(disclosure('Output names',step.outputs));
       list.append(row);
     }
-    group.append(list);
+    trace.append(list);
   }
   const answered = (record.actions ?? []).filter(entry => entry.answeredAt);
   if (answered.length) {
@@ -367,32 +380,25 @@ async function renderRecord(record) {
       item.append(node('small', [...tags(entry), timestamp(entry.answeredAt)].filter(Boolean).join(' · '),'meta'));
       list.append(item);
     }
-    actions.append(list); group.append(actions);
+    actions.append(list); trace.append(actions);
   }
   const info = node('details');
-  info.append(node('summary','Run details'), node('p','Run ID ' + record.runId,'meta'));
+  info.append(node('summary','Technical details'), node('p','Run ID ' + record.runId,'meta'));
   for (const [label, value] of [['Definition',record.definitionId],['Revision',record.revision],['Started by',record.caller],
     ['Adapter',record.adapterId],['Tab',record.tabId],['Inputs',record.inputs?.join(', ')],['Outputs',record.outputs?.join(', ')]]) {
     if (value) info.append(node('p', label + ' · ' + value,'meta'));
   }
-  group.append(info);
+  if (record.entries && Object.keys(record.entries).length) {
+    const saved = node('details');
+    saved.append(node('summary','Saved step data'));
+    showOutputs(record.entries,saved);
+    trace.append(saved);
+  }
+  trace.append(info);
+  group.append(trace);
   if (record.parentRunId) {
     const parent = node('a','View parent workflow run'); parent.href = '#' + encodeURIComponent(record.parentRunId);
     group.append(parent);
-  }
-  if (record.result !== undefined) {
-    group.append(node('h3','Results'));
-    showOutputs(record.result, group);
-  } else if (!record.pending && !['queued','running'].includes(record.status)) {
-    const result = node('div');
-    result.append(action('View available results', async () => {
-      const data = await request('runs.get', {runId: record.runId, includeData:true});
-      result.replaceChildren();
-      const outputs = data.result ?? data.entries;
-      if (outputs != null && (typeof outputs !== 'object' || Object.keys(outputs).length)) showOutputs(outputs, result);
-      else result.append(node('p','This run has no saved results.'));
-    }));
-    group.append(result);
   }
   if (record.pending || ['queued','running'].includes(record.status)) {
     group.append(action('Cancel run', async () => {
@@ -427,7 +433,8 @@ async function load(force = false, returned) {
     if (generation !== view) return;
     const fingerprint = JSON.stringify([record.runId,record.status,record.pending?.id,record.steps,record.finishedAt]);
     if (!force && fingerprint === revision) return;
-    if (record.pending) record = await request('runs.get', {runId:id, includeData:true});
+    if (record.pending || !['queued','running'].includes(record.status) && record.result === undefined)
+      record = await request('runs.get', {runId:id, includeData:true});
     if (generation !== view) return;
     revision = fingerprint;
     for (const url of urls.splice(0)) URL.revokeObjectURL(url);

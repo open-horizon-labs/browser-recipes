@@ -257,6 +257,7 @@ export function createRunService({browser,loadBundle,dispatch,allowModel,allowRe
       const outputs = program.outputs ? workflowInputs({inputs:program.outputs},entries) : entries.get(program.steps.at(-1).id)?.value;
       Object.assign(run,{status:'completed',finishedAt:now(),outputs:record(outputs) ? Object.keys(outputs) : []});
       if (data.retainData) await dataSave(id,{outputs,entries:data.entries});
+      else if (data.showResultInRuns) await dataSave(id,{outputs});
       else await session.remove(skey(id));
       await save(run);
       return {...run,result:outputs};
@@ -442,6 +443,7 @@ export function createRunService({browser,loadBundle,dispatch,allowModel,allowRe
       delete data.actionKey;
       run.status = 'running';
       run.resumedAt = now();
+      if (caller === 'browser') data.showResultInRuns = true;
       active.add(id);
       try {
         await dataSave(id,data);

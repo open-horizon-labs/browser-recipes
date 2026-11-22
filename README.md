@@ -59,19 +59,9 @@ The command stops at preview. A script can read the proposed imports from `choic
 
 **Chrome remote debugging can stay disabled.** The extension checks site access and uses Chrome’s scripting API to run steps in the existing tab. IT needs to allow the extension and the sites it automates. Running recipes from outside Chrome also requires permission to install the native messaging host. [Extension permissions](extension/manifest.json) · [Local bridge](bridge/README.md)
 
-## Example: read an expense report in Concur
+## Check expense report status in Concur
 
-The recipe opens Manage Expenses, checks the heading, and returns the visible text of the first active report card.
-
-```json
-[
-  { "op": "navigate", "path": "/nui/expense" },
-  { "op": "assert", "target": "manage-expenses", "text": "Manage Expenses" },
-  { "op": "read", "target": "first-report", "as": "summary" }
-]
-```
-
-The adapter maps `manage-expenses` and `first-report` to CSS selectors on the US2 Concur origin. The caller receives the report text in `outputs.summary`. If Concur changes its markup, a contributor can update the selector and users can import the revised adapter. [Concur adapter and recipe](https://github.com/open-horizon-labs/browser-recipes-catalog/tree/main/adapters/concur)
+Install **Check expense report and reimbursement status** to see the reports under **Active Reports** in Manage Expenses, with the amounts and statuses Concur displays. Run it from the panel for a quick check or read `outputs.reports` from a script. [Concur recipe](https://github.com/open-horizon-labs/browser-recipes-catalog/blob/main/adapters/concur/recipes/list-active-reports.json)
 
 ## First run on Linux
 

@@ -17,12 +17,16 @@ const catalog = path.resolve(process.env.BROWSER_RECIPES_CATALOG ?? path.join(ru
 const { stdout } = await execFile(process.execPath, [path.join(catalog, 'scripts/pack.mjs')]);
 const adapter = JSON.parse(stdout).adapters.find(entry => entry.id === 'concur');
 const fixture = await readFile(new URL('./fixtures/concur.html', import.meta.url));
+let emptyReports = false;
 const server = createServer((request, response) => {
   response.setHeader('Content-Type', 'text/html; charset=utf-8');
   if (request.url === '/nui/expense') {
+    const cards = emptyReports ? '' :
+      '<li class="report-tile"><a class="sapcnqr-grid-list-item__link" href="/">Example travel</a><p>Approved</p><p>Processing Payment</p></li>' +
+      '<li class="report-tile"><a class="sapcnqr-grid-list-item__link" href="/">Example training</a><p>Submitted</p></li>' +
+      '<li class="report-tile">Create Expense Report</li>';
     response.end('<main role="main"><h1 class="sapcnqr-toolbar__title">Manage Expenses</h1>' +
-      '<section class="active-reports"><ul class="report-tiles-container"><li class="report-tile">' +
-      '<a class="sapcnqr-grid-list-item__link" href="/">Example travel</a></li></ul></section></main>');
+      '<section class="active-reports"><ul class="report-tiles-container">' + cards + '</ul></section></main>');
   } else response.end(fixture);
 });
 server.listen(0, '127.0.0.1');
@@ -93,6 +97,13 @@ try {
   const state = () => target.evaluate(() => window.fixtureState);
 
   assert.equal((await run('first-expense-report-summary')).summary, 'Example travel');
+  const reports = (await run('list-active-reports')).reports;
+  assert.equal(reports.length,2);
+  assert.match(reports[0].text,/Example travel[\s\S]*Processing Payment/);
+  assert.match(reports[1].text,/Example training[\s\S]*Submitted/);
+  emptyReports = true;
+  await target.reload();
+  assert.deepEqual((await run('list-active-reports')).reports,[]);
   await target.goto(adapter.origin);
   assert.equal((await run('preview-submission')).status, 'Not Submitted');
   await run('open-expense-form', { 'expense-type': meal });
