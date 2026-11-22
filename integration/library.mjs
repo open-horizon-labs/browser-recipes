@@ -5,6 +5,7 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright-core';
+import {catalogUrl} from '../extension/community.js';
 import {chooseDefinitions,installDefinitions} from './install-library.mjs';
 
 const dir = await mkdtemp(path.join(tmpdir(),'recipes-library-'));
@@ -52,5 +53,31 @@ try {
   page.once('dialog',dialog => dialog.accept());
   await adapterList.getByRole('button',{name:'Remove recipe'}).click();
   await adapterList.getByText('News · 1 recipe',{exact:true}).waitFor();
+  const other = {...adapter,id:'wire',title:'Wire',origin:'https://wire.example',
+    recipes:[{...recipe,id:'wire-headline'}, {...recipe,id:'wire-archive',title:'Read archives'}]};
+  const combo = {...workflow,id:'wire-digest',title:'Wire digest',tabs:{news:{label:'Wire',adapterId:'wire'}},
+    steps:[{...workflow.steps[0],recipeId:'wire-headline'}]};
+  let offline = true;
+  await page.route(catalogUrl,route => offline ? route.fulfill({status:503}) : route.fulfill({
+    contentType:'application/json',body:JSON.stringify({adapters:[other],workflows:[combo]})}));
+  await page.getByRole('button',{name:'Browse community catalog'}).click();
+  await page.getByText(/Could not load the community catalog/).waitFor();
+  offline = false;
+  await page.getByRole('button',{name:'Browse community catalog'}).click();
+  await page.getByLabel('Search catalog').fill('Wire digest');
+  await page.getByRole('button',{name:'Review install of Wire digest'}).click();
+  assert.equal(await workflowList.getByText('Wire digest',{exact:true}).count(),0);
+  await page.getByRole('button',{name:'Install changes'}).click();
+  await adapterList.getByText('Wire · 1 recipe',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Wire digest is installed'}).waitFor();
+  await page.getByLabel('Search catalog').fill('');
+  await page.getByLabel('Definition type',{exact:true}).selectOption('recipe');
+  await page.getByRole('button',{name:'Review install of Read archives'}).click();
+  await page.getByRole('button',{name:'Install changes'}).click();
+  await adapterList.getByText('Wire · 2 recipes',{exact:true}).waitFor();
+  await page.getByLabel('Definition type',{exact:true}).selectOption('adapter');
+  await page.getByRole('button',{name:'Wire is installed'}).waitFor();
+  await page.getByRole('button',{name:'Grant access for https://wire.example'}).waitFor();
+  console.log('PASS community catalog retry, search, dependency preview, individual recipe install and installed status.');
   console.log('PASS library migration, recipe import, private recipe preservation, dependency protection, removal and reload.');
 } finally { await browser?.close(); await rm(dir,{recursive:true,force:true}); }

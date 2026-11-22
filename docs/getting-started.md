@@ -8,18 +8,16 @@ Read the first subject in Gmail from the Browser Recipes side panel. The Gmail t
 
 You need Git, Node.js 22.13 or later, npm, and a Chromium-based desktop browser that allows unpacked extensions. Once the extension and catalog are installed, running recipes from the browser takes no terminal, native host, or ChatGPT account. Chrome remote debugging can stay disabled.
 
-Open a terminal in a directory where you can keep both projects. These commands use a POSIX shell (on Windows, use Git Bash).
+Open a terminal in a directory where you can keep the extension. These commands use a POSIX shell (on Windows, use Git Bash).
 
 ```sh
 git clone https://github.com/open-horizon-labs/browser-recipes
-git clone https://github.com/open-horizon-labs/browser-recipes-catalog
 cd browser-recipes
 npm ci
 npm run build
-node ../browser-recipes-catalog/scripts/pack.mjs > ../browser-recipes-catalog.json
 ```
 
-The build creates the extension in `dist`. The last command combines the catalog’s adapters, recipes and workflows into the file you’ll import.
+The build creates the extension in `dist`.
 
 1. In the browser profile where you use Gmail, open `chrome://extensions`.
 2. Turn on **Developer mode**, choose **Load unpacked**, and select the **dist** folder inside **browser-recipes**. You should see a **Browser Recipes** extension card.
@@ -28,9 +26,9 @@ The build creates the extension in `dist`. The last command combines the catalog
 ## Load the catalog and grant one site
 
 1. Open **Browser Recipes** from the toolbar and select **Settings** in the runner.
-2. Under **Installed library**, choose the packed file. Review which adapters, recipes, and workflows it adds or updates, then choose **Install changes**. Open an adapter to see its recipes or a workflow to see the recipes each step calls. Private definitions with other IDs stay installed. To update one recipe, choose its file and select its adapter. To uninstall a definition, expand it and choose **Remove**. If a workflow still uses it, Settings names the workflow to update first.
+2. Under **Installed library**, choose **Browse community catalog**. Select **Recipes** and search for **first subject**. Choose **Review install** for the Gmail recipe, check its site and the proposed changes, then choose **Install changes**. A recipe includes its adapter. A workflow includes the adapters and recipes its steps call. Choose **Adapters** to install an app with all its community recipes. You can still use **Install from a file** for private definitions.
 
-![Installed library listing adapters and workflows](images/getting-started/load-catalog.png)
+![Community catalog search for the first Gmail subject, with the adapter and recipe shown in the install preview](images/getting-started/load-catalog.png)
 
 3. Under **Site access**, find **Gmail** and click **Grant access**. If you’re using the public example, choose **Hacker News** instead. Check the domain in the browser prompt, then click **Allow**. The button for that site changes to **Revoke access**.
 

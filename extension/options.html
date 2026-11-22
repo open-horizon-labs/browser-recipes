@@ -16,10 +16,22 @@
         <div id="adapter-list"></div>
         <h3>Workflows</h3>
         <div id="workflow-list"></div>
-        <h3>Install or update</h3>
+        <h3>Community catalog</h3>
+        <button type="button" id="browse-community">Browse community catalog</button>
+        <div id="community-controls" hidden>
+          <label for="community-kind">Definition type</label>
+          <select id="community-kind">
+            <option value="workflow">Workflows</option><option value="adapter">Adapters</option><option value="recipe">Recipes</option>
+          </select>
+          <label>Search catalog <input type="search" id="community-search"></label>
+          <ul id="community-results"></ul>
+        </div>
+        <p id="community-status" role="status"></p>
+        <h3>Install from a file</h3>
         <label for="catalog-file">Choose a catalog, adapter, recipe, or workflow file</label>
         <input id="catalog-file" type="file" accept=".json,application/json">
         <label id="owner-field" hidden>Adapter for this recipe <select id="recipe-owner"></select></label>
+        <h3 id="install-heading" tabindex="-1" hidden></h3>
         <div id="preview"></div>
         <button type="button" id="save" hidden>Install changes</button>
         <p id="library-status" role="status"></p>

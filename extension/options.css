@@ -36,3 +36,11 @@ li, .actions { display: flex; align-items: center; flex-wrap: wrap; justify-cont
 #library button { margin-block: .35rem; }
 #owner-field { display: block; }
 #library [hidden] { display: none; }
+
+#community-controls { margin-block: .7rem; }
+#community-controls label { display: inline-block; margin: 0 .75rem .4rem 0; }
+#community-results { max-height: 22rem; overflow: auto; }
+#community-results li { border-block-end: 1px solid color-mix(in srgb, CanvasText 18%, Canvas); padding: .6rem .25rem; }
+#community-results li div { flex: 1 1 16rem; }
+#community-results small { display: block; overflow-wrap: anywhere; }
+#community-controls input, #community-controls select { max-width: 100%; font: inherit; }

@@ -1,3 +1,4 @@
+import {communityBrowser} from './community.js';
 import {bundled} from './settings.js';
 import {combined, localDefinitions, mergeDefinitions, removeDefinition, updateDefinitions} from './library.js';
 import {originPattern, recipeContract, validateCatalog} from './schema.js';
@@ -54,10 +55,10 @@ export async function initializeLibrary(refreshSettings) {
         const edits = [];
         for (const r of recipes) {
           const operation = difference(r,priorRecipes?.find(entry => entry.id === r.id));
-          if (operation) edits.push(element('li',operation + ' · ' + r.title));
+          if (operation) edits.push(element('li',operation + ' · ' + r.title + ' · ' + recipeContract(r).effect));
         }
         if (!change && !edits.length) continue;
-        const title = [change && change + ' adapter', a.title, edits.length && edits.length + (edits.length === 1 ? ' recipe change' : ' recipe changes')].filter(Boolean).join(' · ');
+        const title = [change && change + ' adapter', a.title + ' (' + a.origin + ')', edits.length && edits.length + (edits.length === 1 ? ' recipe change' : ' recipe changes')].filter(Boolean).join(' · ');
         if (edits.length) {
           const group = details(title);
           const rows = element('ul');
@@ -111,6 +112,7 @@ export async function initializeLibrary(refreshSettings) {
   async function render() {
     local = await localDefinitions(defaults);
     const all = combined(defaults,local);
+    refreshCommunity();
     const adapters = byId('adapter-list'), workflows = byId('workflow-list');
     adapters.replaceChildren(); workflows.replaceChildren();
     const selected = owner.value;
@@ -150,8 +152,21 @@ export async function initializeLibrary(refreshSettings) {
     }
     if (!all.workflows.length) workflows.append(element('p','No workflows installed.'));
   }
+  const heading = byId('install-heading');
+  const refreshCommunity = communityBrowser((selection,title) => {
+    if (save.disabled) return;
+    ++reading;
+    raw = selection;
+    file.value = '';
+    byId('owner-field').hidden = true;
+    heading.textContent = 'Review install · ' + title;
+    heading.hidden = false;
+    review();
+    heading.focus();
+  }, () => local);
   owner.onchange = review;
   file.onchange = async () => {
+    heading.hidden = true;
     const ticket = ++reading;
     raw = undefined;
     preview.replaceChildren(); save.hidden = true;
@@ -177,6 +192,7 @@ export async function initializeLibrary(refreshSettings) {
       await commit(before => checked(before).next);
       raw = undefined; file.value = ''; preview.replaceChildren(); save.hidden = true;
       byId('owner-field').hidden = true;
+      heading.hidden = true;
       status.textContent = 'Changes installed.';
     } catch (e) { status.textContent = e.message; }
     finally { save.disabled = file.disabled = owner.disabled = false; }
