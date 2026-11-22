@@ -94,7 +94,7 @@ Install **Check expense report and reimbursement status** to see the reports und
 
 ## Running on a managed desktop
 
-**Chrome remote debugging can stay disabled.** The extension checks site access and uses Chrome’s scripting API to run steps in the existing tab. IT needs to allow the extension and the sites it automates. Running recipes from outside Chrome also requires permission to install the native messaging host. [Extension permissions](extension/manifest.json) · [Local bridge](bridge/README.md)
+**Chrome remote debugging can stay disabled.** The extension uses Chrome’s scripting API to run steps in your signed-in tab. Grant access to each site in Browser Recipes settings. To run recipes from the Linux CLI, install the native messaging host. [Extension permissions](extension/manifest.json) · [Local bridge](bridge/README.md)
 
 Review an adapter before granting its origin. A recipe can submit data using your signed-in account, and local processes running as your Linux user can call the bridge while it is enabled. Discovery output and successful reads may contain private page content.
 
