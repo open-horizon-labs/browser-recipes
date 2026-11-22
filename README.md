@@ -6,13 +6,14 @@ Many web apps have no Model Context Protocol (MCP) server an agent can call. An 
 
 Browser Recipes lets an agent inspect the app once and save the navigation, actions, and checks as a JSON recipe. The Chromium extension executes those steps directly in the open tab, using its signed-in session. Replay needs no model call, leaves the foreground tab selected, and keeps your cursor free.
 
-**[Preview Outlook meetings for Google Calendar](docs/getting-started.md)** · **[Copy Outlook events to Google Calendar](docs/calendar-sync.md)**
+## Features
 
-## Run from the browser or a script
-
-Open Browser Recipes from the toolbar, choose a tab and an installed recipe, supply any inputs, and click **Run recipe**. The side panel sends the request directly to the extension. The result appears there.
-
-Choose **Workflows** to run several recipes in sequence. Pick an installed workflow and assign its tabs. A workflow can read from several apps, compare results locally, ask you to review data for ChatGPT, and pause for approval before a write. **Sign in with ChatGPT** connects the built-in agent to your ChatGPT plan. A script or agent can start either a recipe or a workflow through the optional Linux CLI. Open **Runs** to inspect the same execution, follow data between steps, or handle a sign-in or submission request. [Calling recipes and workflows](docs/runs.md)
+- **Run in a background tab.** Read Outlook events while you work in another tab. The extension uses the signed-in session, leaves your cursor alone, and works with Chrome remote debugging disabled. [Try the calendar walkthrough](docs/getting-started.md)
+- **Call a recipe from a script or an agent.** Give the Linux CLI a recipe name, account label, and inputs. It returns JSON. If the account needs sign-in, the run pauses and gives you a link to open the app. You can also run the recipe from the extension’s side panel. [CLI examples](bridge/README.md#run-by-account-label)
+- **Combine recipes across apps.** The calendar workflow reads Outlook and Google Calendar, compares time blocks, and shows what it would import. Add a custom ChatGPT instruction such as “skip canceled meetings.” You choose which events to copy and approve the import. [Calendar workflow](docs/calendar-sync.md)
+- **Read attachments through the signed-in session.** A recipe can fetch a document from an allowed app path. The extension extracts text from supported PDFs and Office files locally, or returns the file bytes as base64. [Attachment formats and limits](docs/recipes.md#attachments)
+- **Record a task to draft a recipe.** In developer mode, record your actions or let an agent inspect the page controls. The recording produces editable steps with placeholders for field values. Test the draft against the app before sharing it. [Authoring guide](docs/getting-started.md)
+- **See where a run failed.** Run history shows when each step ran and which earlier outputs it used. The failure report identifies the failed operation and target so an author can reproduce the problem and test a fix. [Run history](docs/runs.md)
 
 ## Read Outlook events from the shell
 
