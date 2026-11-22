@@ -1,3 +1,4 @@
+import {installDefinitions} from './install-library.mjs';
 // Uses the prototype's loopback fake app and a new temporary database.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -106,9 +107,7 @@ try {
 
   const options = await browser.newPage();
   await options.goto(extensionOrigin + '/options.html');
-  await options.locator('#catalog').fill(JSON.stringify(bundle));
-  await options.locator('#save').click();
-  await options.getByText('Catalog saved.', { exact: true }).waitFor();
+  await installDefinitions(options, bundle);
   await options.getByRole('button', { name: 'Grant access for ' + origin }).click();
   await options.getByRole('button', { name: 'Revoke access for ' + origin }).waitFor();
   if (verifyUi5) {

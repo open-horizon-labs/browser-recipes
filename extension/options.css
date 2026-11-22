@@ -28,3 +28,11 @@ li, .actions { display: flex; align-items: center; flex-wrap: wrap; justify-cont
 .recipe-editor button, .recipe-editor select { justify-self: start; max-width: 100%; }
 .recipe-editor pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 18rem; overflow: auto; }
 .recipe-editor pre:empty, .recipe-editor p:empty, .recipe-editor [hidden] { display: none; }
+#library details { margin-block: .4rem; padding: .4rem .65rem; border: 1px solid color-mix(in srgb, CanvasText 23%, Canvas); border-radius: .4rem; }
+#library summary { cursor: pointer; overflow-wrap: anywhere; }
+#library h3 { margin: 1.2rem 0 .4rem; font-size: 1rem; }
+#library ol { padding-inline-start: 1.6rem; }
+#library ol li { display: list-item; }
+#library button { margin-block: .35rem; }
+#owner-field { display: block; }
+#library [hidden] { display: none; }

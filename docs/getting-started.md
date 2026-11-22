@@ -28,9 +28,9 @@ The build creates the extension in `dist`. The last command combines the catalog
 ## Load the catalog and grant one site
 
 1. Open **Browser Recipes** from the toolbar and select **Settings** in the runner.
-2. Under **Installed adapters and workflows**, choose **Choose File**, select `browser-recipes-catalog.json` from the directory containing the two checkouts, then click **Save catalog**. Look for **Catalog saved.** Saving replaces your local catalog. If you already have private recipes, keep a copy before saving.
+2. Under **Installed library**, choose the packed file. Review which adapters, recipes, and workflows it adds or updates, then choose **Install changes**. Open an adapter to see its recipes or a workflow to see the recipes each step calls. Private definitions with other IDs stay installed. To update one recipe, choose its file and select its adapter. To uninstall a definition, expand it and choose **Remove**. If a workflow still uses it, Settings names the workflow to update first.
 
-![Installed adapters with the packed JSON file selected and the Save catalog button on the right](images/getting-started/load-catalog.png)
+![Installed library listing adapters and workflows](images/getting-started/load-catalog.png)
 
 3. Under **Site access**, find **Gmail** and click **Grant access**. If you’re using the public example, choose **Hacker News** instead. Check the domain in the browser prompt, then click **Allow**. The button for that site changes to **Revoke access**.
 
@@ -90,7 +90,7 @@ Give the agent the [catalog authoring skill](https://github.com/open-horizon-lab
 1. **Choose a test tab and scope.** Open the app at the agreed starting page. For a new app, the agent first adds an adapter for the exact site origin. Repeat the catalog pack command above and save the file in Settings, then grant that site access. Agree on any change the recipe may make before running a draft.
 2. **Discover the flow.** In extension settings, enable **Developer tools**. Open **Workflows → Developer tools → Inspect tab**, or use `tabs` and `dev.inspect` through the CLI. For a draft based on your own actions, choose **Start recording**, perform the task in the selected document, then **Stop recording and load draft**. The draft uses placeholders for field values. If you’re running commands for the chat, share only the relevant controls. Inspection results can include private page text.
 3. **Save and test the draft.** The agent puts shared targets in `adapters/<app>/adapter.json`, gives each recipe its own JSON file under `recipes/`, and documents the use case in the app README. Repack and save any new targets before using `dev.test`. Drafts execute real actions. For uploads or downloads, use a test attachment first. [Authoring instructions for writes and attachments](https://github.com/open-horizon-labs/browser-recipes-catalog/blob/main/.agents/skills/browser-recipes-author/references/writes-and-attachments.md)
-4. **Prove it works as installed.** Pack and save the final catalog again. Turn off **Developer tools**, bring a different tab to the front, and use the ordinary `run` command. Ask for the command you can reuse, the run ID, and what the agent compared with the page. If you ran the command yourself, you can confirm the output locally. For a write, check what the app actually saved.
+4. **Prove it works as installed.** Install the final recipe file under its adapter in **Installed library**. Turn off **Developer tools**, bring a different tab to the front, and use the ordinary `run` command. Ask for the command you can reuse, the run ID, and what the agent compared with the page. If you ran the command yourself, you can confirm the output locally. For a write, check what the app actually saved.
 
 ## If something goes wrong
 
@@ -98,7 +98,7 @@ Give the agent the [catalog authoring skill](https://github.com/open-horizon-lab
 | --- | --- |
 | My tab is missing in the runner | Open it in the profile where you installed the extension, grant its exact site under **Settings**, and click **Refresh tabs**. |
 | The CLI cannot connect | Check that the extension is enabled in the intended profile. Register the ID for that browser again. Toggle **Allow programs on this computer to run recipes** off and on, then try `catalog`. |
-| The adapter is missing from `catalog` | Check for **Catalog saved.** Under **Site access**, a granted site shows **Revoke access**. |
+| The adapter is missing from `catalog` | Check for **Changes installed.** Under **Site access**, a granted site shows **Revoke access**. |
 | `tabs` returns an empty list | Open the app in the profile with the extension. Check that the page’s domain matches the origin you granted. Run `tabs` again. |
 | A recipe fails on a step | Open **Failure details for recipe author** in the runner and copy the report. Give the agent the recipe ID, catalog revision (`git -C ../browser-recipes-catalog rev-parse HEAD` for a clean checkout), and returned error. Include the run ID, failed step, operation, target, and completed steps when present. For recent failure records, enable **Developer tools** and run `./bridge/browser-recipes dev.failures`. Check the app before retrying a write. |
 

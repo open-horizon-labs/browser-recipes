@@ -1,17 +1,14 @@
 # Writing a browser recipe
 
-An adapter describes a single exact HTTP(S) origin. Use a separate adapter for a different host, scheme or port. Start discovery for a new site by importing an adapter with an empty recipe list, granting that origin and enabling developer tools. Install it alongside the entries you want to keep. Saving the editor replaces the local catalog.
+An adapter describes a single exact HTTP(S) origin. Use a separate adapter for a different host, scheme or port. To start discovery for a new site, import its adapter file under **Installed library**, grant site access, and enable developer tools. When you have a recipe, import its file and choose this adapter as its owner.
 
 ```json
-[
-  {
-    "id": "my-app",
-    "title": "My app",
-    "origin": "https://app.example.com",
-    "targets": { "heading": "main h1" },
-    "recipes": []
-  }
-]
+{
+  "id": "my-app",
+  "title": "My app",
+  "origin": "https://app.example.com",
+  "targets": { "heading": "main h1" }
+}
 ```
 
 Run `tabs` to get the tab ID, then `dev.inspect` to list controls and same-origin links. Choose a selector that matches one element. Prefer an app-defined ID or data attribute when available. Put the selector in `targets` to reuse it across recipes.

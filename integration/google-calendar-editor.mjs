@@ -1,3 +1,4 @@
+import {installDefinitions} from './install-library.mjs';
 import assert from 'node:assert/strict';
 import { execFile as execFileCallback } from 'node:child_process';
 import { once } from 'node:events';
@@ -40,11 +41,9 @@ try {
   const extensionOrigin = 'chrome-extension://' + new URL(worker.url()).hostname;
   const options = await browser.newPage();
   await options.goto(extensionOrigin + '/' + manifest.options_ui.page);
-  await options.locator('#catalog').fill(JSON.stringify({
+  await installDefinitions(options, {
     adapters: [adapter], workflows: workflows.filter(entry => /^create-.*-calendar-event$/.test(entry.id)),
-  }));
-  await options.locator('#save').click();
-  await options.getByText('Catalog saved.', { exact: true }).waitFor({ timeout: 5000 });
+  });
   await options.getByRole('button', { name: /Grant access for/ }).click();
   await options.getByText('Site access granted.', { exact: true }).waitFor();
   const calendar = await browser.newPage();

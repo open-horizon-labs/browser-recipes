@@ -10,21 +10,24 @@
   <body>
     <main>
       <h1>Browser Recipes settings</h1>
+      <section aria-labelledby="catalog-heading" id="library">
+        <h2 id="catalog-heading">Installed library</h2>
+        <h3>Adapters and their recipes</h3>
+        <div id="adapter-list"></div>
+        <h3>Workflows</h3>
+        <div id="workflow-list"></div>
+        <h3>Install or update</h3>
+        <label for="catalog-file">Choose a catalog, adapter, recipe, or workflow file</label>
+        <input id="catalog-file" type="file" accept=".json,application/json">
+        <label id="owner-field" hidden>Adapter for this recipe <select id="recipe-owner"></select></label>
+        <div id="preview"></div>
+        <button type="button" id="save" hidden>Install changes</button>
+        <p id="library-status" role="status"></p>
+      </section>
       <section aria-labelledby="access-heading">
         <h2 id="access-heading">Site access</h2>
         <p>Grant access to each site you want recipes to use. Under Allowed operations, choose whether workflows can use results from that site in AI prompts. You review the data before sending it to ChatGPT or copying a prompt into another chat.</p>
         <ul id="origins"></ul>
-      </section>
-      <section aria-labelledby="catalog-heading">
-        <h2 id="catalog-heading">Installed adapters and workflows</h2>
-        <label for="catalog">Local catalog (JSON)</label>
-        <textarea id="catalog" rows="11" spellcheck="false"></textarea>
-        <div class="actions">
-          <label for="catalog-file">Load a JSON file into the editor
-            <input id="catalog-file" type="file" accept=".json,application/json">
-          </label>
-          <button type="button" id="save">Save catalog</button>
-        </div>
       </section>
       <section aria-labelledby="sources-heading">
         <h2 id="sources-heading">Local data sources</h2>

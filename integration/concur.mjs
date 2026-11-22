@@ -1,3 +1,4 @@
+import {installDefinitions} from './install-library.mjs';
 // Run with a built runtime and the community catalog checkout.
 import assert from 'node:assert/strict';
 import { execFile as execFileCallback } from 'node:child_process';
@@ -55,9 +56,7 @@ try {
   }));
   const options = await browser.newPage();
   await options.goto('chrome-extension://' + extensionId + '/' + manifest.options_ui.page);
-  await options.locator('#catalog').fill(JSON.stringify([adapter]));
-  await options.locator('#save').click();
-  await options.getByText('Catalog saved.', { exact: true }).waitFor();
+  await installDefinitions(options, [adapter]);
   await options.getByRole('button', { name: /Grant access/ }).click();
   await options.getByText('Site access granted.', { exact: true }).waitFor();
   await options.locator('#bridge').check();

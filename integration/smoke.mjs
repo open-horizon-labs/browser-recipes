@@ -1,3 +1,4 @@
+import {installDefinitions} from './install-library.mjs';
 import {draftWorkflow,verifyRuns} from './runs.mjs';
 // Linux smoke test. Only the isolated fixture origin is pregranted in the test manifest.
 import assert from 'node:assert/strict';
@@ -153,9 +154,7 @@ try {
 }
 
 async function configure(options, bundle) {
-  await options.locator('#catalog').fill(JSON.stringify(bundle));
-  await options.locator('#save').click();
-  await options.getByText('Catalog saved.',{exact:true}).waitFor({timeout:4000});
+  await installDefinitions(options, bundle);
   for (const { origin } of bundle.adapters) {
     await options.getByRole('button',{name:`Grant access for ${origin}`,exact:true}).click();
     await options.getByRole('button',{name:`Revoke access for ${origin}`,exact:true}).waitFor();

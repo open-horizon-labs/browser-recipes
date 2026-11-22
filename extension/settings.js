@@ -1,21 +1,19 @@
 import {operationOrigins} from './scope.js';
 import {hasOrigin} from './access.js';
-import {roleAdapters, unpackCatalog, validateBundle} from './workflow.js';
+import {roleAdapters, unpackCatalog} from './workflow.js';
 import {assertConnectorSharingAllowed} from './connector.js';
 
-const bundled = fetch(chrome.runtime.getURL('catalog.json')).then(response => response.json()).then(unpackCatalog);
+import {combined, localDefinitions} from './library.js';
 
-export async function installedBundle(localCatalog) {
-  const local = unpackCatalog(localCatalog === undefined ? (await chrome.storage.local.get('localCatalog')).localCatalog ?? [] : localCatalog);
+export const bundled = fetch(chrome.runtime.getURL('catalog.json')).then(response => response.json()).then(unpackCatalog);
+
+export async function installedBundle() {
   const defaults = await bundled;
-  return validateBundle({
-    adapters:[...defaults.adapters,...local.adapters],
-    workflows:[...defaults.workflows,...local.workflows],
-  });
+  return combined(defaults, await localDefinitions(defaults));
 }
 
-export async function getCatalog(localCatalog) {
-  return (await installedBundle(localCatalog)).adapters;
+export async function getCatalog() {
+  return (await installedBundle()).adapters;
 }
 
 export async function getWorkflows() {

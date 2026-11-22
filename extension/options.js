@@ -2,15 +2,14 @@ import { companionAgentRequest, companionPermission, companionSetting } from './
 import { bindingKey, operationKey, operationOrigins, siteOperations } from './scope.js';
 import { hasOrigin } from './access.js';
 import { getCatalog, getWorkflows } from './settings.js';
-import { RecipeError, originPattern } from './schema.js';
+import { initializeLibrary } from './library-ui.js';
+import { originPattern } from './schema.js';
 
 const origins = document.querySelector('#origins');
-const catalog = document.querySelector('#catalog');
 const status = document.querySelector('#status');
 const bridge = document.querySelector('#bridge');
 const bridgeStatus = document.querySelector('#bridge-status');
 const dev = document.querySelector('#dev');
-const saveButton = document.querySelector('#save');
 let changingOrigin = false;
 
 function show(message) {
@@ -187,41 +186,6 @@ async function changeOrigin(origin, granted) {
   }
 }
 
-saveButton.addEventListener('click', async () => {
-  try {
-    const localCatalog = JSON.parse(catalog.value);
-    const installed = await getCatalog(localCatalog);
-    // Remove grants for origins no longer represented in the installed catalog.
-    const { approvedOrigins = [] } = await chrome.storage.local.get('approvedOrigins');
-    const updated = approvedOrigins.filter(origin => installed.some(adapter => operationOrigins(adapter).includes(origin)));
-    await chrome.storage.local.set({ localCatalog, approvedOrigins: updated });
-    const retainedPatterns = new Set(updated.map(originPattern));
-    const removedPatterns = [...new Set(approvedOrigins.map(originPattern))].filter(pattern => !retainedPatterns.has(pattern));
-    if (removedPatterns.length) await chrome.permissions.remove({ origins: removedPatterns });
-    await Promise.all([renderOrigins(), renderSources()]);
-    show('Catalog saved.');
-  } catch (error) {
-    if (error instanceof RecipeError) show(error.message);
-    else if (error instanceof SyntaxError) show('Enter valid catalog JSON.');
-    else show('Could not save the catalog.');
-  }
-});
-
-document.querySelector('#catalog-file').addEventListener('change', async event => {
-  const file = event.target.files[0];
-  if (!file) return;
-  if (file.size > 2000000) {
-    show('Select a catalog smaller than 2 MB.');
-    return;
-  }
-  try {
-    catalog.value = await file.text();
-    show('Review the catalog, then choose Save catalog.');
-  } catch {
-    show('Could not read the catalog file.');
-  }
-});
-
 async function renderBridge(refresh = false) {
   try {
     const { status: message } = await chrome.runtime.sendMessage({ command: refresh ? 'bridge.refresh' : 'bridge.status' });
@@ -250,10 +214,10 @@ dev.addEventListener('change', async () => {
 });
 
 async function initialize() {
-  const { localCatalog = [], devMode = false, bridgeEnabled = false } = await chrome.storage.local.get(null);
-  catalog.value = JSON.stringify(localCatalog, null, 2);
+  const {devMode = false, bridgeEnabled = false} = await chrome.storage.local.get(['devMode','bridgeEnabled']);
   dev.checked = devMode;
   bridge.checked = bridgeEnabled;
+  await initializeLibrary(async () => Promise.all([renderOrigins(),renderSources()]));
   await Promise.all([renderOrigins(), renderSources(), renderBridge(true)]);
   setInterval(() => void renderBridge(), 3000);
 }
