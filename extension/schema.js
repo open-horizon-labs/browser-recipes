@@ -4,10 +4,13 @@ const fields = {
   navigate: ['path'],
   read: ['selector', 'as'],
   readList: ['selector', 'as', 'attributes'],
+  readValue: ['selector', 'as'],
   document: ['selector', 'as'],
   click: ['selector'],
   fill: ['selector', 'input'],
   assert: ['selector', 'text'],
+  assertValue: ['selector', 'input', 'value'],
+  assertValues: ['selector', 'input'],
   attach: ['selector', 'input'],
   readAttachment: ['selector', 'as', 'allowedPathPrefix'],
 };
@@ -85,7 +88,7 @@ export function validateRecipe(recipe, adapter) {
     const location = `recipe step ${index + 1}`;
     expect(record(step) && typeof step.op === 'string' && Object.hasOwn(fields, step.op), location);
     const allowed = fields[step.op];
-    shape(step, ['op', ...allowed, ...allowed.includes('selector') ? ['target'] : []], location);
+    shape(step, ['op', ...allowed, ...allowed.includes('selector') ? ['target', 'match'] : []], location);
     if (Object.hasOwn(step, 'as') || fields[step.op].includes('as')) {
       expect(id(step.as) && !outputs.has(step.as), location);
       outputs.add(step.as);
@@ -95,6 +98,16 @@ export function validateRecipe(recipe, adapter) {
       const named = Object.hasOwn(step, 'target');
       expect(direct !== named &&
         (direct ? string(step.selector, 512) : id(step.target) && Object.hasOwn(targets, step.target)), location);
+      if (Object.hasOwn(step, 'match')) {
+        const match = step.match;
+        shape(match, ['text', 'input', 'attribute', 'within'], location);
+        const literal = Object.hasOwn(match, 'text');
+        const parameter = Object.hasOwn(match, 'input');
+        expect(literal !== parameter && (literal ? string(match.text, 1024)
+          : id(match.input) && inputs[match.input]?.type === 'string'), location);
+        expect(match.attribute === undefined || ['aria-label', 'label'].includes(match.attribute), location);
+        expect(match.within === undefined || (match.attribute === undefined && string(match.within, 512)), location);
+      }
     }
     if (step.op === 'navigate') expect(sameOriginPath(step.path, origin), location);
     if (step.op === 'document') expect(documentPaths.length > 0, location);
@@ -102,11 +115,13 @@ export function validateRecipe(recipe, adapter) {
       const attributes = step.attributes;
       expect(Array.isArray(attributes) && attributes.length <= 8 && new Set(attributes).size === attributes.length &&
         attributes.every(name => typeof name === 'string' &&
-          /^(?:aria-(?:label|checked|selected|expanded)|data-(?:eventid|calitemid|datekey)|checked)$/.test(name)), location);
+          /^(?:aria-(?:label|checked|selected|expanded)|data-(?:eventid|calitemid|datekey)|checked|label)$/.test(name)), location);
     }
     if (step.op === 'readAttachment') expect(documentPaths.includes(step.allowedPathPrefix), location);
     if (step.op === 'assert' && Object.hasOwn(step, 'text')) expect(string(step.text, 1024), location);
-    if (['attach', 'fill'].includes(step.op)) {
+    if (step.op === 'assertValue' && Object.hasOwn(step, 'value')) {
+      expect(!Object.hasOwn(step, 'input') && typeof step.value === 'string' && step.value.length <= 16384, location);
+    } else if (['attach', 'fill', 'assertValue', 'assertValues'].includes(step.op)) {
       const type = step.op === 'attach' ? 'attachment' : 'string';
       expect(id(step.input) && Object.hasOwn(inputs, step.input) && inputs[step.input].type === type, location);
     }
@@ -118,10 +133,11 @@ export function validateCatalog(catalog) {
   expect(Array.isArray(catalog) && catalog.length <= 64, 'adapter catalog');
   const adapters = new Set();
   for (const adapter of catalog) {
-    shape(adapter, ['id', 'title', 'origin', 'recipes', 'targets', 'documentPaths'], 'adapter');
+    shape(adapter, ['id', 'title', 'origin', 'recipes', 'targets', 'documentPaths', 'backgroundOnly'], 'adapter');
     expect(id(adapter.id) && !adapters.has(adapter.id) && string(adapter.title) &&
       typeof adapter.origin === 'string' && originOf(adapter.origin) === adapter.origin, 'adapter identity or origin');
     adapters.add(adapter.id);
+    expect(adapter.backgroundOnly === undefined || typeof adapter.backgroundOnly === 'boolean', 'adapter background mode');
     if (Object.hasOwn(adapter, 'targets')) {
       expect(record(adapter.targets) && Object.keys(adapter.targets).length <= 128, 'adapter targets');
       for (const [name, selector] of Object.entries(adapter.targets)) {
@@ -148,14 +164,22 @@ export function validateInputs(recipe, inputs) {
   const invalid = () => new RecipeError('INVALID_INPUTS', 'Provide inputs matching the recipe definitions.');
   if (!record(inputs) || Object.keys(inputs).some(key => !Object.hasOwn(specs, key))) throw invalid();
   for (const [name, spec] of Object.entries(specs)) {
-    const needed = spec.required || recipe.steps.some(step => step.input === name);
+    const matching = recipe.steps.some(step => step.match?.input === name);
+    const valueList = recipe.steps.some(step => step.op === 'assertValues' && step.input === name);
+    const needed = spec.required || matching || recipe.steps.some(step => step.input === name);
     if (!Object.hasOwn(inputs, name)) {
       if (needed) throw invalid();
       continue;
     }
     const value = inputs[name];
     if (spec.type === 'string') {
-      if (typeof value !== 'string' || value.length > 16384) throw invalid();
+      if (typeof value !== 'string' || value.length > 16384 || (matching && !string(value, 16384))) throw invalid();
+      if (valueList) {
+        let values;
+        try { values = JSON.parse(value); } catch { throw invalid(); }
+        if (!Array.isArray(values) || values.length === 0 || values.length > 256 ||
+            !values.every(entry => typeof entry === 'string')) throw invalid();
+      }
     } else if (!record(value) || Object.keys(value).some(key => !['name', 'mimeType', 'base64'].includes(key)) ||
       !string(value.name, 255) || /[\/\\\x00-\x1f]/.test(value.name) ||
       !string(value.mimeType, 160) || !/^[\w.+-]+\/[\w.+-]+$/.test(value.mimeType) ||

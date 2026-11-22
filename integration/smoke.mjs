@@ -51,10 +51,27 @@ try {
   const workshop = JSON.parse(await readFile(path.join(workshopDir, 'adapter.json')));
   const ticketPage = path.join(fixture,'ticket.html');
   const ticketHtml = await readFile(ticketPage,'utf8');
-  await writeFile(ticketPage,ticketHtml.replace('</main>', '<a id="scan" href="/files/scan.png">Scan</a></main>'));
+  await writeFile(ticketPage,ticketHtml.replace('</main>', `
+    <a id="scan" href="/files/scan.png">Scan</a>
+    <input id="ticket-state" readonly value="Draft">
+    <section><label><input type="checkbox">Example Taxi</label></section>
+    <section><label><input type="checkbox">Example Hotel</label></section>
+    <button type="button" aria-label="Receipt example.pdf"></button>
+    </main>`));
   workshop.recipes.push(uploadRecipe, {id:'read-scan',title:'Read test scan',steps:[
     {op:'readAttachment',selector:'#scan',as:'note',allowedPathPrefix:'/files/'}
   ]});
+  workshop.recipes.push({
+    id: 'select-reviewed-line', title: 'Select the reviewed line',
+    inputs: { line: { type: 'string' } },
+    steps: [
+      { op: 'assertValue', selector: '#ticket-state', value: 'Draft' },
+      { op: 'click', selector: 'section input[type=checkbox]', match: { input: 'line', attribute: 'label' } },
+      { op: 'readList', selector: 'section input:checked', attributes: ['label'], as: 'selected' },
+      { op: 'readList', selector: 'button[aria-label^="Receipt"]', attributes: ['aria-label'], as: 'attachments' },
+      { op: 'readValue', selector: '#ticket-state', as: 'state' },
+    ],
+  });
   const probe = await fetch(fixtureOrigin).catch(() => null);
   assert.equal(probe, null, 'Fixture port already in use');
   server = spawn('python3', ['-m','http.server','8765','--bind','127.0.0.1','--directory',fixture], {stdio:'ignore'});
@@ -96,6 +113,11 @@ try {
   const focused = await active();
   assert.notEqual(tab.tabId, focused);
   assert.equal((await run('read-ticket')).outputs.title, 'Ticket 42');
+  assert.deepEqual((await run('select-reviewed-line',{line:'Example Hotel'})).outputs, {
+    selected:[{text:'', attributes:{label:'Example Hotel'}}],
+    attachments:[{text:'', attributes:{'aria-label':'Receipt example.pdf'}}],
+    state:'Draft',
+  });
   assert.equal((await run('save-response',{message:'private smoke value'})).outputs['saved-response'],'private smoke value');
   assert.match((await run('dispatch-note')).outputs.note.markdown,/Dispatch cleared for pickup/);
   const fallback = (await run('read-scan')).outputs.note;
