@@ -1,6 +1,8 @@
 # Tab Recipes
 
-An LLM can inspect a browser app and write a JSON recipe for a recurring task. Once you’ve tested the recipe, a script can run it by ID. The Chromium extension executes the steps in a specific open tab, using that tab’s session. You can work in another tab during the run. Replay requires no model call.
+Many web apps have no Model Context Protocol (MCP) server an agent can call. An agent can still use the app through a browser or computer-use tool. For a recurring task, that often means inspecting the same pages, finding the same controls, and deciding where to click on every run. Most computer-use tools also take over the active window and mouse pointer while the agent works.
+
+Tab Recipes lets an agent inspect the app once and save the navigation, actions, and checks as a JSON recipe. On subsequent runs, a script or an agent passes the recipe ID, tab ID, and inputs to the CLI. The Chromium extension executes those steps directly in the open tab, using its signed-in session. Replay needs no model call, leaves the foreground tab selected, and keeps your cursor free.
 
 ## Example: read an expense report in Concur
 
