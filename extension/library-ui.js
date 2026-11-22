@@ -161,22 +161,21 @@ export async function initializeLibrary(refreshSettings) {
     }
     if (!all.workflows.length) workflows.append(element('p','No workflows installed.'));
   }
-  const heading = byId('install-heading');
-  const refreshCommunity = communityBrowser((selection,title) => {
-    if (save.disabled) return;
+  function offerSetup(workflows, anchor) {
     byId('continue-workflow')?.remove();
-    ++reading;
-    raw = selection;
-    file.value = '';
-    byId('owner-field').hidden = true;
-    heading.textContent = 'Review install · ' + title;
-    heading.hidden = false;
-    review();
-    heading.focus();
+    if (workflows.length !== 1) return;
+    const link = element('a','Set up ' + workflows[0].title);
+    link.href = 'agent.html?workflow=' + encodeURIComponent(workflows[0].id);
+    link.id = 'continue-workflow';
+    anchor.after(link);
+  }
+  const refreshCommunity = communityBrowser(async selection => {
+    await commit(before => mergeDefinitions(before,selection));
+    offerSetup(selection.workflows,byId('community-status'));
+    if (raw) review();
   }, () => local);
   owner.onchange = review;
   file.onchange = async () => {
-    heading.hidden = true;
     byId('continue-workflow')?.remove();
     const ticket = ++reading;
     raw = undefined;
@@ -204,14 +203,8 @@ export async function initializeLibrary(refreshSettings) {
       await commit(before => checked(before).next);
       raw = undefined; file.value = ''; preview.replaceChildren(); save.hidden = true;
       byId('owner-field').hidden = true;
-      heading.hidden = true;
       status.textContent = 'Changes installed.';
-      if (workflows.length === 1) {
-        const link = element('a','Set up ' + workflows[0].title);
-        link.href = 'agent.html?workflow=' + encodeURIComponent(workflows[0].id);
-        status.after(link);
-        link.id = 'continue-workflow';
-      }
+      offerSetup(workflows,status);
     } catch (e) { status.textContent = e.message; }
     finally { save.disabled = file.disabled = owner.disabled = false; }
   };

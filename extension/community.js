@@ -63,9 +63,6 @@ export function communityBrowser(onSelect, getLocal) {
       source.target = '_blank'; source.rel = 'noreferrer'; source.textContent = item.title;
       info.textContent = item.detail;
       text.append(source,info);
-      const review = document.createElement('button');
-      review.type = 'button'; review.textContent = 'Review install';
-      review.setAttribute('aria-label','Review install of ' + item.title);
       const selection = communitySelection(catalog,item);
       const local = getLocal();
       const identical = (a,b) => JSON.stringify(a) === JSON.stringify(b);
@@ -75,13 +72,26 @@ export function communityBrowser(onSelect, getLocal) {
         const {recipes: prior,...old} = found;
         return identical(metadata,old) && recipes.every(r => identical(r,prior.find(p => p.id === r.id)));
       }) && selection.workflows.every(w => identical(w,local.workflows.find(p => p.id === w.id)));
-      if (installed) {
-        review.disabled = true;
-        review.textContent = 'Installed';
-        review.setAttribute('aria-label',item.title + ' is installed');
-      }
-      review.onclick = () => onSelect(selection,item.title);
-      row.append(text,review); results.append(row);
+      const button = document.createElement('button');
+      button.type = 'button';
+      const prior = item.workflow ? local.workflows.find(w => w.id === item.workflow.id)
+        : local.adapters.find(a => a.id === item.adapter.id);
+      const exists = item.recipe ? prior?.recipes.some(r => r.id === item.recipe.id) : !!prior;
+      const verb = exists ? 'Update' : 'Install';
+      button.textContent = installed ? 'Installed' : verb;
+      button.disabled = installed;
+      button.setAttribute('aria-label',installed ? item.title + ' is installed' : verb + ' ' + item.title);
+      button.onclick = async () => {
+        button.disabled = true;
+        try {
+          await onSelect(selection);
+          status.textContent = (exists ? 'Updated ' : 'Installed ') + item.title + '.';
+        } catch (error) {
+          status.textContent = error.message;
+          button.disabled = false;
+        }
+      };
+      row.append(text,button); results.append(row);
     }
   }
   browse.onclick = async () => {

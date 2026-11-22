@@ -23,8 +23,8 @@ The build creates the extension in `dist`.
 
 ## Install the workflow and connect your calendars
 
-1. Open **Browser Recipes** from the toolbar. Choose **Browse workflows**, then **Review install** beside **Copy Outlook events to Google Calendar**. In an existing installation, use **Settings → Browse community catalog**.
-2. Review the workflow, adapters, and recipes, then choose **Install changes**. Follow **Set up Copy Outlook events to Google Calendar**.
+1. Open **Browser Recipes** from the toolbar. Choose **Browse workflows**, then **Install** beside **Copy Outlook events to Google Calendar**. In an existing installation, use **Settings → Browse community catalog**.
+2. The extension installs the workflow with its adapters and recipes. Follow **Set up Copy Outlook events to Google Calendar**.
 3. Grant access to the Outlook host you actually use and to Google Calendar. Open both calendars in this browser profile and choose Week view in each. Use **Refresh tabs** and choose the source and destination tabs by title.
 
 ## Preview the missing meetings

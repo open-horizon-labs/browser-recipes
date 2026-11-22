@@ -65,19 +65,21 @@ try {
   offline = false;
   await page.getByRole('button',{name:'Browse community catalog'}).click();
   await page.getByLabel('Search catalog').fill('Wire digest');
-  await page.getByRole('button',{name:'Review install of Wire digest'}).click();
-  assert.equal(await workflowList.getByText('Wire digest',{exact:true}).count(),0);
-  await page.getByRole('button',{name:'Install changes'}).click();
+  await page.getByRole('button',{name:'Install Wire digest'}).click();
   await adapterList.getByText('Wire · 1 recipe',{exact:true}).waitFor();
   await page.getByRole('button',{name:'Wire digest is installed'}).waitFor();
   await page.getByLabel('Search catalog').fill('');
   await page.getByLabel('Definition type',{exact:true}).selectOption('recipe');
-  await page.getByRole('button',{name:'Review install of Read archives'}).click();
-  await page.getByRole('button',{name:'Install changes'}).click();
+  await page.getByRole('button',{name:'Install Read archives'}).click();
   await adapterList.getByText('Wire · 2 recipes',{exact:true}).waitFor();
   await page.getByLabel('Definition type',{exact:true}).selectOption('adapter');
   await page.getByRole('button',{name:'Wire is installed'}).waitFor();
   await page.getByRole('button',{name:'Grant access for https://wire.example'}).waitFor();
-  console.log('PASS community catalog retry, search, dependency preview, individual recipe install and installed status.');
+  other.title = 'Wire service';
+  await page.getByRole('button',{name:'Refresh catalog'}).click();
+  await page.getByRole('button',{name:'Update Wire service'}).click();
+  await adapterList.getByText('Wire service · 2 recipes',{exact:true}).waitFor();
+  assert.ok(await page.getByRole('button',{name:'Wire service is installed'}).isDisabled());
+  console.log('PASS community search, one-click install with dependencies, update and installed status.');
   console.log('PASS library migration, recipe import, private recipe preservation, dependency protection, removal and reload.');
 } finally { await browser?.close(); await rm(dir,{recursive:true,force:true}); }

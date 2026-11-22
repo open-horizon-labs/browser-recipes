@@ -32,8 +32,7 @@ try {
   await app.goto('chrome-extension://'+id+'/runner.html');
   await app.getByRole('link',{name:'Browse workflows'}).click();
   const title = 'Copy Outlook events to Google Calendar';
-  await app.getByRole('button',{name:'Review install of '+title}).click();
-  await app.getByRole('button',{name:'Install changes'}).click();
+  await app.getByRole('button',{name:'Install '+title}).click();
   await app.getByRole('link',{name:'Set up '+title}).click();
   await app.locator('#workflow option[value="outlook-to-google-calendar"]').waitFor({state:'attached'});
   assert.equal(await app.locator('#workflow').inputValue(),'outlook-to-google-calendar');
