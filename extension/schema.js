@@ -70,9 +70,24 @@ function documentPath(path, origin) {
     new URL(path, origin).pathname === path && !path.includes('%');
 }
 
+// Effective contracts are also available for catalogs written before metadata existed.
+export function recipeContract(recipe) {
+  const changesControls = recipe.steps.some(step => ['click', 'fill', 'attach'].includes(step.op));
+  expect(recipe.kind === undefined || id(recipe.kind), 'recipe kind');
+  expect(recipe.effect === undefined || ['read', 'write'].includes(recipe.effect), 'recipe effect');
+  expect(!changesControls || recipe.effect !== 'read', 'read-only recipe effect');
+  return {
+    kind: recipe.kind ?? 'action',
+    effect: recipe.effect ?? (changesControls ? 'write' : 'read'),
+    inputs: Object.fromEntries(Object.entries(recipe.inputs ?? {}).map(([name, spec]) =>
+      [name, recipe.steps.some(step => step.input === name || step.match?.input === name) ? {...spec, required:true} : spec])),
+    outputs: recipe.steps.filter(step => step.as).map(step => step.as),
+  };
+}
+
 export function validateRecipe(recipe, adapter) {
   const { origin, targets = {}, documentPaths = [] } = adapter;
-  shape(recipe, ['id', 'title', 'inputs', 'steps'], 'recipe');
+  shape(recipe, ['id', 'title', 'inputs', 'steps', 'kind', 'effect'], 'recipe');
   expect(id(recipe.id) && string(recipe.title), 'recipe identity');
   const inputs = recipe.inputs === undefined ? {} : recipe.inputs;
   expect(record(inputs) && Object.keys(inputs).length <= 32, 'recipe inputs');
@@ -155,6 +170,7 @@ export function validateRecipe(recipe, adapter) {
       expect(id(step.input) && Object.hasOwn(inputs, step.input) && inputs[step.input].type === type, location);
     }
   }
+  recipeContract(recipe);
   return recipe;
 }
 
@@ -162,12 +178,23 @@ export function validateCatalog(catalog) {
   expect(Array.isArray(catalog) && catalog.length <= 64, 'adapter catalog');
   const adapters = new Set();
   for (const adapter of catalog) {
-    shape(adapter, ['id', 'title', 'origin', 'recipes', 'targets', 'documentPaths', 'paths', 'frame', 'identity', 'backgroundOnly'], 'adapter');
+    shape(adapter, ['id', 'title', 'origin', 'recipes', 'targets', 'documentPaths', 'paths', 'frame', 'identity', 'backgroundOnly', 'auth'], 'adapter');
     expect(id(adapter.id) && !adapters.has(adapter.id) && string(adapter.title) &&
       typeof adapter.origin === 'string' && originOf(adapter.origin) === adapter.origin, 'adapter identity or origin');
     adapters.add(adapter.id);
     if (adapter.paths !== undefined) {
       expect(Array.isArray(adapter.paths) && adapter.paths.length > 0 && adapter.paths.every(p => p === '/' || documentPath(p,adapter.origin)), 'adapter paths');
+    }
+    if (adapter.auth !== undefined) {
+      const auth = adapter.auth;
+      shape(auth, ['entryPath', 'origins', 'paths', 'signedOutSelector'], 'adapter auth');
+      expect(sameOriginPath(auth.entryPath, adapter.origin), 'adapter sign-in entry path');
+      expect(auth.origins === undefined || Array.isArray(auth.origins) && auth.origins.length <= 12 &&
+        auth.origins.every(origin => typeof origin === 'string' && origin.startsWith('https://') &&
+          originOf(origin) === origin && !origin.includes('*') && origin !== adapter.origin), 'adapter sign-in origins');
+      expect(auth.paths === undefined || Array.isArray(auth.paths) && auth.paths.length <= 16 &&
+        auth.paths.every(path => documentPath(path, adapter.origin)), 'adapter sign-in paths');
+      expect(auth.signedOutSelector === undefined || string(auth.signedOutSelector, 512), 'adapter signed-out selector');
     }
     if (adapter.frame !== undefined) {
       shape(adapter.frame, ['origin','paths'], 'adapter frame');

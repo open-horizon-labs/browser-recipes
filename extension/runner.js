@@ -20,6 +20,7 @@ let recipes = [];
 let fields = [];
 let inputKey;
 const downloadUrls = [];
+const openApp = 'open-app';
 
 function choose(message, error = false) {
   status.textContent = message;
@@ -53,7 +54,8 @@ function clearResults() {
 function updateInputs() {
   const recipe = recipes.find(item => item.key === recipePicker.value);
   const key = recipe ? JSON.stringify([tabPicker.value, recipe.key, recipe.inputs]) : '';
-  runButton.disabled = !recipe;
+  runButton.disabled = !recipe || tabPicker.value === openApp;
+  document.querySelector('#start-run').disabled = !recipe;
   if (key === inputKey) return;
   inputKey = key;
   fields = [];
@@ -99,7 +101,7 @@ function updateRecipes() {
   recipePicker.replaceChildren(new Option('Choose a recipe', ''));
   recipes = [];
   for (const adapter of catalog) {
-    if (!tab?.adapterIds.includes(adapter.id) || adapter.recipes.length === 0) continue;
+    if ((tabPicker.value !== openApp && !tab?.adapterIds.includes(adapter.id)) || adapter.recipes.length === 0) continue;
     const group = document.createElement('optgroup');
     group.label = adapter.title;
     for (const recipe of adapter.recipes) {
@@ -113,7 +115,8 @@ function updateRecipes() {
   capture.disabled = !tab;
   if (recipes.some(recipe => recipe.key === previous)) recipePicker.value = previous;
   updateInputs();
-  if (!tab) choose(tabs.length ? 'Select the tab you want the recipe to use.' : 'No eligible tabs are open. Open a tab for an approved site and refresh.');
+  if (tabPicker.value === openApp) choose('Choose a recipe. The run will pause if you need to open its app or sign in.');
+  else if (!tab) choose(tabs.length ? 'Select the tab you want the recipe to use.' : 'No eligible tabs are open. Open a tab for an approved site and refresh.');
   else if (!recipes.length) choose('This tab has no installed recipes.');
   else choose('');
 }
@@ -132,7 +135,9 @@ async function refresh() {
       const label = origin && name !== origin ? `${name} — ${origin} (tab ${tabId})` : `${name} (tab ${tabId})`;
       tabPicker.append(new Option(label, String(tabId)));
     }
-    if (tabs.some(item => String(item.tabId) === selected)) tabPicker.value = selected;
+    if (catalog.length) tabPicker.append(new Option('Find or open the app for my recipe', openApp));
+    if (selected === openApp || tabs.some(item => String(item.tabId) === selected)) tabPicker.value = selected;
+    else if (!tabs.length && catalog.length) tabPicker.value = openApp;
     updateRecipes();
     if (!catalog.length) choose('Install and grant access to an adapter in Settings, then refresh.');
   } catch (error) {
@@ -194,12 +199,28 @@ form.addEventListener('submit', async event => {
   event.preventDefault();
   const recipe = recipes.find(item => item.key === recipePicker.value);
   if (controls.disabled || !tabPicker.value || !recipe) return;
-  const tabId = Number(tabPicker.value);
+  const tabId = tabPicker.value === openApp ? null : Number(tabPicker.value);
   controls.disabled = true;
   clearResults();
   choose(`Running ${recipe.title} on tab ${tabId}…`);
   try {
     const inputs = await gatherInputs();
+    if (event.submitter !== runButton) {
+      const retainData = document.querySelector('#retain-results').checked;
+      const record = await request('runs.start', { kind: 'recipe', tabId, adapterId: recipe.adapterId, recipeId: recipe.id, inputs, retainData,
+        reviewRecipes: document.querySelector('#review-shared').checked });
+      const href = 'runs.html#' + encodeURIComponent(record.runId);
+      if (record.result === undefined || retainData) location.assign(href);
+      else {
+        renderOutput(record.result);
+        choose(`${recipe.title} completed. `);
+        const link = document.createElement('a');
+        link.href = href;
+        link.textContent = 'Inspect run';
+        status.append(link);
+      }
+      return;
+    }
     const { outputs, runId } = await request('run', { tabId, adapterId: recipe.adapterId, recipeId: recipe.id, inputs });
     function display(value) {
       clearResults();
@@ -208,7 +229,11 @@ form.addEventListener('submit', async event => {
         authorize:() => assertRecipeModelAccess(recipe.adapterId), apply:display}));
     }
     display(outputs);
-    choose(`${recipe.title} completed on tab ${tabId}. Run ${runId}.`);
+    choose(`${recipe.title} completed on tab ${tabId}. `);
+    const inspect = document.createElement('a');
+    inspect.href = 'runs.html#' + encodeURIComponent(runId);
+    inspect.textContent = 'Inspect run';
+    status.append(inspect);
   } catch (error) {
     choose(error.message, true);
     if (error.cause?.code) {

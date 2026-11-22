@@ -2,10 +2,15 @@ import { developerObserver } from './dev-observer.js';
 import { createDispatcher, safeError } from './runtime.js';
 import { nativeResponseFrames } from './native-response.js';
 import { originOf } from './schema.js';
-import { getCatalog } from './settings.js';
+import {createRunService} from './run-service.js';
+import {chatgptAgentRequest} from './chatgpt-agent-transport.js';
+import { getCatalog, installedBundle, assertWorkflowModelAccess, assertRecipeModelAccess } from './settings.js';
 
 const nativeHost = 'org.openhorizonlabs.tab_recipes';
 const dispatch = createDispatcher(chrome, getCatalog);
+const runService = createRunService({browser:chrome,loadBundle:installedBundle,dispatch,allowModel:assertWorkflowModelAccess,allowRecipeModel:assertRecipeModelAccess,plan:chatgptAgentRequest});
+const publicCommands = new Set(['definitions.list','runs.start','runs.list','runs.get','runs.resume','runs.cancel','runs.forget','run']);
+const pageCommands = new Set([...publicCommands,'runs.open','runs.editReview','runs.editPlan','runs.agent','runs.agentReview','runs.interactiveBegin','runs.interactiveStep']);
 const recorder = developerObserver(chrome, getCatalog);
 const observerCommands = new Map([
   ['dev.record.start', recorder.start], ['dev.record.stop', recorder.stop], ['dev.capture', recorder.capture],
@@ -54,7 +59,7 @@ async function manageBridge() {
 async function reply(port, { id, command, args }) {
   let response;
   try {
-    response = { id, result: await dispatch(command, args) };
+    response = { id, result: await (publicCommands.has(command) ? runService(command,args,'terminal') : dispatch(command,args)) };
   } catch (error) {
     response = { id, error: safeError(error) };
   }
@@ -109,6 +114,7 @@ async function runnerData() {
 
 async function handlePageRequest({ command, args }) {
   try {
+    if (pageCommands.has(command)) return {result:await runService(command,args)};
     if (command === 'runner.list') return { result: await runnerData() };
     return { result: await (observerCommands.has(command) ? observerCommands.get(command)(args) : dispatch(command, args)) };
   } catch (error) {
@@ -124,9 +130,10 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   }
   const runner = sender.url === chrome.runtime.getURL('runner.html');
   const agent = sender.url === chrome.runtime.getURL('agent.html');
-  if (runner || agent) {
+  const runs = sender.url?.split('#')[0] === chrome.runtime.getURL('runs.html');
+  if (runner || agent || runs) {
     const command = message?.command;
-    if (['catalog', 'tabs', 'run', 'runner.list'].includes(command) ||
+    if (pageCommands.has(command) || ['catalog', 'tabs', 'runner.list'].includes(command) ||
         command === 'dev.capture' ||
         agent && ['dev.inspect','dev.test','dev.failures','dev.record.start','dev.record.stop'].includes(command)) {
       void handlePageRequest(message).then(respond);

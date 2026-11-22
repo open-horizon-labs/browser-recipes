@@ -14,6 +14,7 @@
       <h1>Workflows</h1>
       <nav aria-label="Browser Recipes">
         <a href="runner.html">Recipes</a>
+        <a href="runs.html">Runs</a>
         <a href="options.html" target="_blank" rel="noopener">Settings</a>
       </nav>
     </header>
@@ -22,10 +23,18 @@
       <div class="picker">
         <label for="workflow">Installed workflow</label>
         <select id="workflow" disabled><option value="">Choose a workflow</option></select>
-        <button id="refresh" type="button">Refresh tabs</button>
       </div>
       <p id="description" hidden></p>
       <div id="roles"></div>
+      <button id="refresh" type="button">Refresh tabs</button>
+      <p id="status" role="status" aria-live="polite"></p>
+      <label id="review-choice" class="retain" hidden><input id="review-recipes" type="checkbox"> Review recipe inputs and outputs for optional ChatGPT edits</label>
+      <div id="launch" hidden>
+        <label class="retain"><input id="retain-results" type="checkbox"> Keep results for this browser session</label>
+        <button id="start-run" class="primary" type="button">Start workflow</button>
+        <p>Follow progress in Runs. The workflow pauses when it needs your input.</p>
+        <div id="launch-result" hidden></div>
+      </div>
     </section>
     <details id="guide">
       <summary>Guide</summary>
@@ -58,22 +67,20 @@
       </div>
     </details>
     <section id="execution" aria-labelledby="steps-heading" hidden>
-      <h2 id="steps-heading">Workflow steps</h2>
-      <label><input id="review-recipes" type="checkbox"> Review each recipe’s inputs and outputs for optional ChatGPT edits</label>
-      <ol id="steps"></ol>
+      <h2 id="steps-heading">Run step by step</h2>
       <div id="current"></div>
+      <ol id="steps" aria-label="Workflow steps"></ol>
       <div class="actions">
         <button id="reset" type="button" hidden>Start over</button>
         <button id="save-results" type="button" hidden>Save results on this device</button>
       </div>
     </section>
-    <p id="status" role="status" aria-live="polite"></p>
     <details id="workflow-failure" hidden>
       <summary>Failure details for recipe author</summary>
       <textarea id="workflow-failure-log" readonly rows="10" aria-label="Failure report"></textarea>
     </details>
     <details id="history">
-      <summary>Run history</summary>
+      <summary>Saved results and step-by-step activity</summary>
       <p>Run records show which steps ran. Saved results can include private data.</p>
       <button id="refresh-history" type="button">Refresh history</button>
       <button id="clear-history" type="button">Clear history</button>

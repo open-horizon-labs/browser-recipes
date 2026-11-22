@@ -10,7 +10,7 @@ Browser Recipes lets an agent inspect the app once and save the navigation, acti
 
 Open Browser Recipes from the toolbar, choose a tab and an installed recipe, supply any inputs, and click **Run recipe**. The side panel sends the request directly to the extension. The result appears there.
 
-Choose **Workflows** to run several recipes in sequence. Pick an installed workflow and assign its tabs. A workflow can read from several apps, compare results locally, ask you to review data for ChatGPT, and pause for approval before a write. **Sign in with ChatGPT** connects the built-in agent to your ChatGPT plan. A script or local agent can also run individual recipes through the optional Linux CLI.
+Choose **Workflows** to run several recipes in sequence. Pick an installed workflow and assign its tabs. A workflow can read from several apps, compare results locally, ask you to review data for ChatGPT, and pause for approval before a write. **Sign in with ChatGPT** connects the built-in agent to your ChatGPT plan. A script or agent can start either a recipe or a workflow through the optional Linux CLI. Open **Runs** to inspect the same execution, follow data between steps, or handle a sign-in or submission request. [Calling recipes and workflows](docs/runs.md)
 
 ## Example: show today’s Outlook events from the shell
 

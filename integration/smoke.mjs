@@ -1,3 +1,4 @@
+import {draftWorkflow,verifyRuns} from './runs.mjs';
 // Linux smoke test. Only the isolated fixture origin is pregranted in the test manifest.
 import assert from 'node:assert/strict';
 import { spawn, execFile as execCallback } from 'node:child_process';
@@ -49,6 +50,8 @@ try {
   const imageBytes = Buffer.alloc(1024 * 1024, 0xa5);
   await writeFile(path.join(fixture,'files','scan.png'), imageBytes);
   const workshop = JSON.parse(await readFile(path.join(workshopDir, 'adapter.json')));
+  workshop.auth = {entryPath:'/ticket.html',paths:['/signin.html']};
+  await writeFile(path.join(fixture,'signin.html'),'<h1>Fixture sign-in</h1>');
   const ticketPage = path.join(fixture,'ticket.html');
   const ticketHtml = await readFile(ticketPage,'utf8');
   await writeFile(ticketPage,ticketHtml.replace('</main>', `
@@ -96,7 +99,7 @@ try {
   const options = await browser.newPage();
   const optionsPath = manifest.options_page ?? manifest.options_ui.page;
   await options.goto(extensionOrigin+'/'+optionsPath);
-  await configure(options, { ...fixtures.bundle, adapters: [workshop, ...fixtures.bundle.adapters] });
+  await configure(options, { ...fixtures.bundle, adapters: [workshop, ...fixtures.bundle.adapters], workflows:[...fixtures.bundle.workflows,draftWorkflow] });
   const active = () => worker.evaluate(async () => (await chrome.tabs.query({active:true,currentWindow:true}))[0].id);
   await verifyRunner({browser, worker, extensionOrigin, target, active});
   await verifyWorkflows({browser, extensionOrigin, fixtures, active});
@@ -139,6 +142,7 @@ try {
   recipe.steps[0] = {op:'read',target:'ticket',as:'title'};
   assert.equal((await call('dev.test',{...args,recipe,inputs:{}})).outputs.title,'Ticket 42');
   await verifyAuthoring({target,call,args});
+  await verifyRuns({call,failure,tab,target,foreground,active,extensionOrigin,browser});
   assert.equal(await active(), focused);
   console.log('PASS native CLI → inactive tab: catalog import, navigation, verified write, PDF, discovery, failure handoff, draft repair, foreground preserved.');
 } finally {

@@ -30,22 +30,31 @@ export async function frameTarget(browser, tabId, adapter) {
   return {tabId,documentIds:[matches[0].documentId]};
 }
 
-export async function boundAccount(browser, target, adapter) {
+export async function boundAccount(browser, target, adapter, {verify = false} = {}) {
   if (!adapter.identity) return null;
   if (adapter.identity.reveal) await assertSiteOperation(browser,adapter,'click');
   const key = bindingKey(adapter);
   const saved = await browser.storage.local.get(key);
-  if (saved[key]) return saved[key];
+  if (saved[key] && !verify) return saved[key];
   const [{result}] = await browser.scripting.executeScript({
     target,
     func:executeDom,
     args:[{op:'identify',identity:adapter.identity,origin:adapter.frame?.origin ?? adapter.origin,paths:adapter.frame?.paths ?? adapter.paths}],
   });
-  if (!result?.ok || !result.value) throw new RecipeError('ACCOUNT_UNAVAILABLE','The app did not show an unambiguous account identity.');
+  if (!result?.ok || !result.value) {
+    const code = result?.code;
+    if (code === 'ORIGIN_CHANGED' || code === 'PATH_NOT_ALLOWED') throw new RecipeError(code,'The app left the approved location.');
+    throw new RecipeError('ACCOUNT_UNAVAILABLE','The app did not show an unambiguous account identity.');
+  }
+  function checked(value) {
+    if (verify && value !== result.value) throw new RecipeError('ACCOUNT_CHANGED','The signed-in account differs from the account bound in Settings.');
+    return value;
+  }
+  if (saved[key]) return checked(saved[key]);
   // A single lock also covers concurrent first runs in different tabs.
   return navigator.locks.request(key, async () => {
     const current = (await browser.storage.local.get(key))[key];
-    if (current) return current;
+    if (current) return checked(current);
     await browser.storage.local.set({[key]:result.value});
     return result.value;
   });

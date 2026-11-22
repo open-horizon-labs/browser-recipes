@@ -5,7 +5,7 @@ import {assertConnectorSharingAllowed} from './connector.js';
 
 const bundled = fetch(chrome.runtime.getURL('catalog.json')).then(response => response.json()).then(unpackCatalog);
 
-async function installedBundle(localCatalog) {
+export async function installedBundle(localCatalog) {
   const local = unpackCatalog(localCatalog === undefined ? (await chrome.storage.local.get('localCatalog')).localCatalog ?? [] : localCatalog);
   const defaults = await bundled;
   return validateBundle({

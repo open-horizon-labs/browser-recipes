@@ -23,3 +23,6 @@ button:disabled { opacity: .55; cursor: default; }
   .tab-field { grid-template-columns: minmax(0, 1fr); }
   .tab-field button { justify-self: start; }
 }
+.launch-actions, .runner-header nav { display: flex; flex-wrap: wrap; gap: .6rem; }
+.retain { display: block; margin-block: .5rem; }
+.status { text-wrap: pretty; }

@@ -82,6 +82,7 @@ export async function verifyWorkflows(context) {
   await context.fixtures.reconnect();
   await verifyGuide(context);
   await verifyRecipeEdits(context);
+  await verifySharedCalendarPreview(context);
 }
 
 async function selectWorkflow(page, id) {
@@ -325,4 +326,49 @@ async function verifyRecipeEdits({browser,extensionOrigin,fixtures,active}) {
   } finally {
     await Promise.all([source.close(),dest.close(),runner.close()]);
   }
+}
+
+async function verifySharedCalendarPreview({browser, extensionOrigin, fixtures, active}) {
+  const source = await browser.newPage();
+  const destination = await browser.newPage();
+  const runner = await browser.newPage();
+  try {
+    await source.goto(fixtures.source.origin + '/week');
+    await destination.goto(fixtures.destination.origin + '/calendar/u/1/r/week');
+    await runner.goto(extensionOrigin + '/runs.html');
+    const front = await active();
+    const send = (command,args = {}) => runner.evaluate(async ([command,args]) => {
+      const response = await chrome.runtime.sendMessage({command,args});
+      if (response.error) throw new Error(response.error.message);
+      return response.result;
+    },[command,args]);
+    const tabs = await send('tabs');
+    const target = adapter => tabs.find(tab => tab.adapterIds.includes(adapter)).tabId;
+    let run = await send('runs.start',{kind:'workflow',workflowId:'outlook-to-google-calendar',
+      tabs:{source:target('outlook'), destination:target('google-calendar')}});
+    assert.equal(run.pending?.tag,'fields');
+    run = await send('runs.resume',{runId:run.runId,actionId:run.pending.id,answer:{
+      fields:{first:'2027-02-01', last:'2027-02-07', 'source-zone':'America/New_York', 'destination-zone':'America/New_York'}}});
+    assert.equal(run.pending?.tag,'agent');
+    await runner.goto(extensionOrigin + '/runs.html#' + run.runId);
+    const countPlans = async () => (await fixtures.commands()).filter(command => command === 'plan').length;
+    const before = await countPlans();
+    await runner.getByRole('button',{name:'Review model request'}).click();
+    const data = runner.getByLabel('Data to share (JSON)',{exact:true});
+    await data.fill((await data.inputValue()).replaceAll('Workshop','Reviewed workshop'));
+    await runner.getByRole('option',{name:'Fixture model'}).waitFor({state:'attached'});
+    assert.equal(await countPlans(),before);
+    await runner.getByRole('button',{name:'Send to ChatGPT'}).click();
+    await runner.getByText('Review the model reply before continuing.').waitFor();
+    assert.equal(await countPlans(),before + 1);
+    await runner.getByRole('button',{name:'Use reviewed reply'}).click();
+    await runner.getByRole('checkbox',{name:/Reviewed workshop/}).waitFor();
+    const preview = await send('runs.get',{runId:run.runId,includeData:true});
+    assert.equal(preview.pending.tag,'selection');
+    assert.equal(preview.context.choices.length,1);
+    await send('runs.cancel',{runId:run.runId});
+    assert.equal(await active(),front);
+    assert.equal(destination.url(),fixtures.destination.origin + '/calendar/u/1/r/week');
+    console.log('PASS shared Runs UI reviewed the calendar prompt and reached selection without importing.');
+  } finally { await Promise.all([source.close(),destination.close(),runner.close()]); }
 }

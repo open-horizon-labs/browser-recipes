@@ -181,10 +181,9 @@ export function createDispatcher(browser, loadCatalog) {
     return logWrite.catch(() => {});
   }
 
-  async function run(tabId, adapter, recipe, inputs) {
+  async function run(tabId, adapter, recipe, inputs, runId = crypto.randomUUID()) {
     if (runningTabs.has(tabId)) throw new RecipeError('TAB_BUSY', 'A recipe is already using the selected tab.');
     runningTabs.add(tabId);
-    const runId = crypto.randomUUID();
     const outputs = Object.create(null);
     const metadata = Object.create(null);
     const completed = [];
@@ -232,7 +231,7 @@ export function createDispatcher(browser, loadCatalog) {
     }
   }
 
-  return async (command, args = {}) => {
+  return async (command, args = {}, runtimeRunId) => {
     if (typeof command === 'string' && command.startsWith('dev.')) {
       const { devMode } = await browser.storage.local.get('devMode');
       if (devMode !== true) throw new RecipeError('DEV_DISABLED', 'Enable developer tools in extension settings.');
@@ -305,7 +304,7 @@ export function createDispatcher(browser, loadCatalog) {
     if (!recipe) throw new RecipeError('RECIPE_NOT_FOUND', 'This recipe is not installed.');
     const inputs = args.inputs === undefined ? {} : args.inputs;
     validateInputs(recipe, inputs);
-    return await run(args.tabId, adapter, recipe, inputs);
+    return await run(args.tabId, adapter, recipe, inputs, runtimeRunId);
   };
 }
 

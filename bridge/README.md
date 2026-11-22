@@ -18,6 +18,10 @@ Use Python 3.9 or later.
    path of this checkout. Register again if you move it.
 3. Open Browser Recipes Options and select **Run recipes from the terminal → Allow programs on this computer to run recipes**. Only one browser connection can use the socket at a time.
 
+## Run recipes and workflows
+
+Use `definitions.list` to discover operations, `runs.start` to call a recipe or workflow, and `runs.get` to inspect the result or pending user action. [Parameters and examples](../docs/runs.md)
+
 ## Commands
 
 ```sh

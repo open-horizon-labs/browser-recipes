@@ -40,3 +40,14 @@ pre { max-height: 20rem; overflow: auto; white-space: pre-wrap; overflow-wrap: a
 #guide { margin-top: 1.1rem; }
 #guide p { margin-top: .45rem; }
 #current .selection-option { display: block; margin-block: .35rem; }
+#launch { margin-block-start: 1rem; }
+#launch p { margin: .4rem 0 0; }
+#launch button.primary { background: Highlight; color: HighlightText; border-color: Highlight; font-weight: 600; }
+#current { margin-block: 1.15rem; }
+header nav { flex-wrap: wrap; }
+#roles + #refresh { margin-block: .6rem 0; }
+.picker { grid-template-columns: minmax(0, 1fr); }
+#status:empty { display: none; }
+#status, #current p, #guide p, #launch p, #roles small { text-wrap: pretty; }
+#roles small { font-weight: 400; }
+.retain { display: block; margin-block: .5rem; font-weight: 400; }

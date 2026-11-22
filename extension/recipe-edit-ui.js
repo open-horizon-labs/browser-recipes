@@ -7,7 +7,7 @@ function element(tag, text) {
   return item;
 }
 
-export function recipeEditor({phase, key, read, apply, authorize}) {
+export function recipeEditor({phase, key, read, apply, authorize, plan = args => chatgptAgentRequest('plan', args)}) {
   const panel = element('details');
   panel.className = 'recipe-editor';
   panel.append(element('summary', 'Filter or change ' + phase + ' with ChatGPT'));
@@ -27,7 +27,7 @@ export function recipeEditor({phase, key, read, apply, authorize}) {
   const picker = element('select');
   picker.setAttribute('aria-label','ChatGPT model for recipe edits');
   const proposal = element('pre');
-  let draft, edited;
+  let draft, edited, edits;
   const actions = element('fieldset');
   function button(title, fn) {
     const control = element('button', title);
@@ -84,9 +84,9 @@ export function recipeEditor({phase, key, read, apply, authorize}) {
     proposal.textContent = '';
     await authorize();
     const value = await current();
-    const {text} = await chatgptAgentRequest('plan', {model:picker.value,prompt:draft.prompt});
+    const {text} = await plan({model:picker.value,prompt:draft.prompt});
     await current();
-    const edits = JSON.parse(text.trim().replace(/^\x60\x60\x60(?:json)?\s*/i,'').replace(/\s*\x60\x60\x60$/,''));
+    edits = JSON.parse(text.trim().replace(/^\x60\x60\x60(?:json)?\s*/i,'').replace(/\s*\x60\x60\x60$/,''));
     edited = proposeEdits(value, edits);
     proposal.textContent = JSON.stringify(promptView(edited),null,2);
     accept.hidden = false;
@@ -95,7 +95,7 @@ export function recipeEditor({phase, key, read, apply, authorize}) {
   actions.append(proposal);
   const accept = button('Use proposed ' + phase, async () => {
     await current();
-    await apply(edited);
+    await apply(edited, edits);
     clear();
     status.textContent = 'Changes applied to this run.';
   });

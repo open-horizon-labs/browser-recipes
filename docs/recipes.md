@@ -87,3 +87,24 @@ A step that addresses a DOM target can set `at: {"path":"/exact/page"}`.
 Add `"under":"/account/"` to match the exact route below the current
 account segment. The runtime checks that path in the target document. Use this
 on a save control shared by new-item and existing-item editors.
+
+### Action discovery and sign-in
+
+Recipes may declare a stable `kind` such as `get`, `list`, `create`, `update` or `submit`, and an `effect` of `read` or `write`. The discovery contract returns these fields alongside named inputs and output names derived from `as` in step order. Earlier catalogs use the kind `action` and infer the effect. Clicking, filling and attaching always require write approval, including clicks that open a read-only detail panel. A catalog author can explicitly mark a higher-impact action as a write.
+
+An adapter can declare its app entry point and evidence of a sign-in challenge:
+
+```json
+{
+  "auth": {
+    "entryPath": "/app/",
+    "origins": ["https://login.example.com"],
+    "paths": ["/sign-in", "/sign-in/"],
+    "signedOutSelector": "form[data-view='sign-in']"
+  }
+}
+```
+
+`entryPath` is a path on the approved adapter origin. A trailing slash in `paths` matches a directory. `origins` lists exact HTTPS identity providers for the selected tab. Use a selector unique to the signed-out state. Only the visible marker's presence is checked on the approved app origin. Sign-in provider origins receive no scripting permission from this declaration.
+
+Opening the app or sign-in tab requires a person to choose the pending action in the extension. If Chrome hides the selected tab's URL, this action opens the configured app entry in a new tab. Resume checks the current app origin, allowed path and any configured account identity. An account mismatch stops the run. For a background-only adapter, return to the runner before resuming.

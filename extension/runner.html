@@ -14,6 +14,7 @@
         <h1>Browser Recipes</h1>
         <nav aria-label="Browser Recipes">
           <a href="agent.html" target="_blank" rel="noopener">Workflows</a>
+          <a href="runs.html">Runs</a>
           <a href="options.html" target="_blank" rel="noopener">Settings</a>
         </nav>
       </header>
@@ -33,7 +34,12 @@
             </select>
           </div>
           <div id="inputs"></div>
-          <button id="run" class="primary" type="submit" disabled>Run recipe</button>
+          <label class="retain"><input id="review-shared" type="checkbox"> Review shared run inputs and outputs for optional ChatGPT edits</label>
+          <label class="retain"><input id="retain-results" type="checkbox"> Keep shared run results for this browser session</label>
+          <div class="launch-actions">
+            <button id="start-run" class="primary" type="submit" disabled>Start recipe run</button>
+            <button id="run" type="submit" disabled>Run recipe here</button>
+          </div>
         </fieldset>
       </form>
       <p id="runner-status" class="status" role="status">Loading available tabs and recipes…</p>

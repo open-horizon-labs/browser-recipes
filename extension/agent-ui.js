@@ -20,6 +20,8 @@ const savedPrefix = 'workflow-saved-';
 const checkpointPrefix = 'workflow-write-';
 const writeCheckpoints = new Map();
 let workflowRunId = crypto.randomUUID();
+let interactiveJournal;
+let interactiveUpdates = Promise.resolve();
 let pendingOutput;
 let rolesLocked = false;
 let restored = false;
@@ -77,13 +79,35 @@ async function request(command, args = {}, native = false) {
   return response.result;
 }
 
+async function beginInteractive() {
+  if (!interactiveJournal) {
+    const runId = workflowRunId;
+    const savedSteps = restored ? [...results.keys()] : [];
+    interactiveJournal = request('runs.interactiveBegin', { runId, workflowId: workflow.id, tabs: Object.fromEntries(selectedTabs) })
+      .then(async record => {
+        // Snapshots saved before the shared journal contain completed steps only in the snapshot.
+        for (const stepId of savedSteps) {
+          if (!record.steps.some(step => step.id === stepId && step.finishedAt)) {
+            await request('runs.interactiveStep', {runId,stepId});
+          }
+        }
+        return record;
+      })
+      .catch(error => { interactiveJournal = undefined; throw error; });
+  }
+  return interactiveJournal;
+}
+
 function roleSelected() {
   return Object.entries(workflow?.tabs ?? {}).every(([role, definition]) =>
     tabs.some(tab => tab.tabId === selectedTabs.get(role) && roleAdapters(definition).some(id => tab.adapterIds.includes(id))));
 }
 
 function updateControls() {
+  el('review-choice').hidden = !workflow;
   el('review-recipes').disabled = busy || Boolean(pendingOutput);
+  el('launch').hidden = !workflow || index > 0 || Boolean(pendingOutput);
+  el('start-run').disabled = busy || !workflow;
   el('workflow').disabled = busy || !workflows.length;
   el('refresh').disabled = busy;
   el('reset').disabled = busy;
@@ -120,7 +144,10 @@ async function act(progress, task, trackStep = false) {
   updateControls();
   report(progress);
   try {
-    report(await task());
+    if (trackStep) await beginInteractive();
+    const message = await task();
+    if (trackStep) await interactiveUpdates;
+    report(message);
   } catch (error) {
     report(error.message, true);
     if (trackStep && workflow?.steps[index]) {
@@ -178,7 +205,14 @@ function renderRoles() {
       el(`tab-${id}`).focus({ preventScroll: true });
       report();
     });
-    el('roles').append(field(`tab-${id}`, role.label, picker));
+    const group = field(`tab-${id}`, role.label, picker);
+    if (!choices.length) {
+      const note = node('small', 'Start the workflow to open the app when prompted, or open an approved tab and refresh.');
+      note.id = 'tab-hint-' + id;
+      picker.setAttribute('aria-describedby', note.id);
+      group.append(note);
+    }
+    el('roles').append(group);
   }
 }
 
@@ -253,7 +287,8 @@ async function executeRecipe(step, inputs, fields = {}, recipeId = step.recipeId
   const adapterId = roleAdapters(workflow.tabs[step.tab]).find(id => target?.adapterIds.includes(id));
   if (!adapterId) throw new Error("The selected tab no longer matches its adapter.");
   const interactiveInputs = Object.fromEntries(Object.entries(fields).map(([id, value]) => [id, String(value)]));
-  return { ...await request('run', { tabId, adapterId, recipeId, inputs: { ...inputs, ...interactiveInputs } }), adapterId };
+  await beginInteractive();
+  return { ...await request('run', { tabId, adapterId, recipeId, parentRunId: workflowRunId, parentStepId: step.id, inputs: { ...inputs, ...interactiveInputs } }), adapterId };
 }
 
 async function runRecipe(step, inputs, fields = {}) {
@@ -474,6 +509,22 @@ function renderConnector(step, inputs, mount) {
   }, true));
 }
 
+function renderHandoff(step, inputs, mount) {
+  if (step.tab) {
+    mount.append(node('p', `${workflow.tabs[step.tab].label} · tab ${selectedTabs.get(step.tab)}`));
+  }
+  if (Object.keys(inputs).length) mount.append(details('Review handoff inputs', node('pre', preview(inputs))));
+  const readFields = fieldsFor(step, mount);
+  const reply = node('textarea', undefined, { rows: 3, spellcheck: 'false' });
+  mount.append(details('Record a result', field(`handoff-${step.id}`, 'Result (JSON)', reply)));
+  mount.append(button('complete-handoff', 'Continue after handoff', () => {
+    void act('Recording the handoff…', async () => {
+      saveStep(step, reply.value.trim() ? parseReply(reply.value) : null, readFields());
+      return afterStep();
+    }, true);
+  }, true));
+}
+
 function renderTransform(step, inputs, mount) {
   const readFields = fieldsFor(step, mount);
   const selection = node('div', undefined, { id: 'selection', hidden: '' });
@@ -489,6 +540,7 @@ function renderTransform(step, inputs, mount) {
       selectionEvents = new AbortController();
       selection.replaceChildren();
       selection.hidden = false;
+      run.hidden = true;
       const choices = [];
       const items = value.items ?? [];
       selection.append(node('h4', 'Review proposed items'));
@@ -519,6 +571,7 @@ function renderTransform(step, inputs, mount) {
   mount.addEventListener('input', event => {
     if (!selection.contains(event.target)) {
       selection.hidden = true;
+      run.hidden = false;
       selectionEvents.abort();
       selectionEvents = new AbortController();
     }
@@ -706,7 +759,8 @@ function render() {
     return;
   }
   if (!roleSelected()) {
-    root.append(node('p', restored ? 'Select the tabs to use before resuming the saved workflow.' : 'Choose an approved tab for each role before running the workflow.'));
+    const unavailable = [...el('roles').querySelectorAll('select')].some(select => select.options.length <= 1);
+    root.append(node('p', unavailable ? 'Step-by-step mode needs an open tab for each role.' : restored ? 'Select the tabs to resume the saved workflow.' : 'Select the tabs above to run a step.'));
     updateControls();
     return;
   }
@@ -722,6 +776,7 @@ function render() {
     else if (step.op === 'transform') renderTransform(step, inputs, group);
     else if (step.op === 'connector') renderConnector(step, inputs, group);
     else if (step.op === 'agent') renderAgent(step, inputs, group);
+    else if (step.op === 'handoff') renderHandoff(step, inputs, group);
   } catch (error) {
     group.append(node('p', error.message));
   }
@@ -734,10 +789,14 @@ el('review-recipes').addEventListener('change',render);
 
 function selectWorkflow() {
   pendingOutput = undefined;
+  el('launch-result').hidden = true;
+  el('launch-result').replaceChildren();
   el('workflow-failure').hidden = true;
   el('workflow-failure-log').value = '';
   resetGuide();
   workflow = workflows.find(item => item.id === el('workflow').value);
+  interactiveJournal = undefined;
+  interactiveUpdates = Promise.resolve();
   workflowRunId = crypto.randomUUID();
   results.clear();
   selectedTabs.clear();
@@ -896,10 +955,19 @@ async function records(prefix) {
 }
 
 async function appendHistory(step, status, runId) {
+  if (status === 'Complete') {
+    const args = { runId: workflowRunId, stepId: step.id, ...(runId ? { childRunId: runId } : {}) };
+    const journal = beginInteractive();
+    interactiveUpdates = interactiveUpdates.then(async () => {
+      await journal;
+      await request('runs.interactiveStep', args);
+    });
+    await interactiveUpdates;
+  }
   const key = historyPrefix + crypto.randomUUID();
   await chrome.storage.local.set({
     [key]: {
-      workflowId: workflow.id, title: workflow.title, stepId: step.id, label: step.label, status,
+      workflowRunId, workflowId: workflow.id, title: workflow.title, stepId: step.id, label: step.label, status,
       timestamp: new Date().toISOString(), ...(runId ? { runId } : {}),
     },
   });
@@ -934,7 +1002,7 @@ async function showHistory() {
     const item = node('article');
     item.append(node('strong', entry.title), node('p', `Saved ${new Date(entry.timestamp).toLocaleString()}`));
     item.append(button(`restore-${key}`, 'Restore saved results', () => {
-      void act('Restoring workflow results…', async () => restore(entry));
+      if (discardReview()) void act('Restoring workflow results…', async () => restore(entry));
     }));
     item.append(button(`remove-${key}`, 'Remove saved results', () => {
       if (!confirm('Remove these saved results from this browser?')) return;
@@ -950,7 +1018,9 @@ async function showHistory() {
     const list = node('ol');
     for (const [, entry] of activity) {
       const time = new Date(entry.timestamp).toLocaleString();
-      list.append(node('li', `${time} · ${entry.title} · ${entry.label} · ${entry.status}${entry.runId ? ` · run ${entry.runId}` : ''}`));
+      const item = node('li', `${time} · ${entry.title} · ${entry.label} · ${entry.status}`);
+      if (entry.workflowRunId) item.append(node('a','Inspect workflow run',{href:'runs.html#' + encodeURIComponent(entry.workflowRunId)}));
+      list.append(item);
     }
     target.append(list);
   }
@@ -1074,11 +1144,33 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-el('workflow').addEventListener('change', selectWorkflow);
+function discardReview() {
+  return !workflow || (!index && !pendingOutput && !rolesLocked)
+    || confirm('Leave this step-by-step run? Unsaved results and edits will be lost.');
+}
+
+el('start-run').addEventListener('click', () => void act('Starting workflow…', async () => {
+  const record = await request('runs.start', { kind: 'workflow', workflowId: workflow.id, tabs: Object.fromEntries(selectedTabs),
+    reviewRecipes: el('review-recipes').checked, retainData: el('retain-results').checked });
+  const href = 'runs.html#' + encodeURIComponent(record.runId);
+  if (record.result !== undefined && !el('retain-results').checked) {
+    const result = el('launch-result');
+    result.replaceChildren(node('h3', 'Workflow complete'), details('View results', node('pre', preview(record.result))),
+      node('a', 'Inspect run', {href}));
+    result.hidden = false;
+  } else location.assign(href);
+}));
+el('workflow').addEventListener('change', () => {
+  if (discardReview()) selectWorkflow();
+  else el('workflow').value = workflow.id;
+});
 el('refresh').addEventListener('click', () => void act('Finding workflows and approved tabs…', refresh));
 el('reset').addEventListener('click', () => {
+  if (!discardReview()) return;
   pendingOutput = undefined;
   resetGuide();
+  interactiveJournal = undefined;
+  interactiveUpdates = Promise.resolve();
   workflowRunId = crypto.randomUUID();
   index = 0;
   rolesLocked = false;
