@@ -41,9 +41,17 @@
           </div>
           <div class="field">
             <label for="recipe">Recipe</label>
-            <select id="recipe" required disabled>
-              <option value="">Choose a recipe</option>
-            </select>
+            <div id="recipe-picker">
+              <div class="recipe-picker-field">
+                <input id="recipe" type="text" role="combobox" aria-autocomplete="list"
+                  aria-controls="recipe-options" aria-expanded="false" placeholder="Search recipes" autocomplete="off" disabled>
+                <button type="button" aria-label="Browse recipes" aria-controls="recipe-options" aria-expanded="false" disabled>
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m4 6 4 4 4-4"/></svg>
+                </button>
+              </div>
+              <ul id="recipe-options" role="listbox" aria-label="Recipes" hidden></ul>
+              <p class="recipe-picker-empty" role="status" hidden>No matching recipes.</p>
+            </div>
           </div>
           <div id="inputs"></div>
           <label class="retain"><input id="review-shared" type="checkbox"> Review inputs and results with ChatGPT</label>

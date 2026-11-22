@@ -230,8 +230,10 @@ async function verifyHeadlines({ browser, extensionOrigin, fixtures, active }) {
       const tabId = await picker.inputValue();
       await runner.goto(extensionOrigin + '/runner.html');
       await runner.setViewportSize({width:405,height:614});
+      await runner.locator('#recipe-setup summary').click();
       await runner.locator('#tab').selectOption(tabId);
-      await runner.locator('#recipe').selectOption('hacker-news/front-page');
+      await runner.locator('#recipe').fill('hacker-news/front-page');
+      await runner.locator('#recipe').press('Enter');
       await runner.locator('#run').click();
       await runner.locator('#results').getByText('Fixture front-page headline').waitFor();
       await runner.screenshot({path:process.env.WORKFLOW_RUNNER_IMAGE});
@@ -300,7 +302,8 @@ async function verifyRecipeEdits({browser,extensionOrigin,fixtures,active}) {
     const tabId = await runner.evaluate(async () => (await chrome.runtime.sendMessage({command:'tabs',args:{}})).result.find(t => t.adapterIds.includes('workshop')).tabId);
     await runner.locator('#recipe-setup summary').click();
     await runner.locator('#tab').selectOption(String(tabId));
-    await runner.locator('#recipe').selectOption('workshop/runner-upload');
+    await runner.locator('#recipe').fill('workshop/runner-upload');
+    await runner.getByRole('option',{name:/Upload a workshop attachment/}).click();
     const inputs = runner.locator('#inputs');
     const message = inputs.getByLabel('message',{exact:true});
     await message.fill('Original');

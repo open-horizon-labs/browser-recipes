@@ -1,3 +1,4 @@
+import {createRecipePicker} from './recipe-picker.js';
 import {renderRecipeOutputs} from './recipe-outputs.js';
 import {watchTabs} from './watch-tabs.js';
 import {recipeContract} from './schema.js';
@@ -6,7 +7,7 @@ import {assertRecipeModelAccess, getWorkflows, getCatalog} from './settings.js';
 const form = document.querySelector('#runner');
 const controls = document.querySelector('#controls');
 const tabPicker = document.querySelector('#tab');
-const recipePicker = document.querySelector('#recipe');
+const recipePicker = createRecipePicker(document.querySelector('#recipe-picker'),recipeChanged);
 const inputFields = document.querySelector('#inputs');
 const setup = document.querySelector('#recipe-setup');
 let lastTabSnapshot;
@@ -137,22 +138,16 @@ function updateInputs() {
 
 function updateRecipes(previous = recipePicker.value, announce = true) {
   const tab = tabs.find(item => String(item.tabId) === tabPicker.value);
-  recipePicker.replaceChildren(new Option('Choose a recipe', ''));
   recipes = [];
   for (const adapter of catalog) {
     if ((tabPicker.value !== openApp && !tab?.adapterIds.includes(adapter.id)) || adapter.recipes.length === 0) continue;
-    const group = document.createElement('optgroup');
-    group.label = adapter.title;
     for (const recipe of adapter.recipes) {
       const key = `${adapter.id}/${recipe.id}`;
-      recipes.push({ ...recipe, key, adapterId: adapter.id });
-      group.append(new Option(recipe.title, key));
+      recipes.push({ ...recipe, key, adapterId: adapter.id, app: adapter.title });
     }
-    recipePicker.append(group);
   }
-  recipePicker.disabled = !recipes.length;
+  recipePicker.update(recipes,previous);
   capture.disabled = !tab;
-  if (recipes.some(recipe => recipe.key === previous)) recipePicker.value = previous;
   updateInputs();
   if (!announce) return;
   if (tabPicker.value === openApp) choose('');
@@ -330,12 +325,12 @@ tabPicker.addEventListener('change', () => {
   launchRecipe = null;
   updateRecipes();
 });
-recipePicker.addEventListener('change', () => {
+function recipeChanged() {
   launchRecipe = null;
   clearResults();
   choose('');
   updateInputs();
-});
+}
 watchTabs(refresh, () => refreshing || controls.disabled);
 void refresh(true);
 

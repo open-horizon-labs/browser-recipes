@@ -46,7 +46,7 @@ export async function verifyRunner({ browser, worker, extensionOrigin, target, a
     assert.equal(await adapter.getByRole('link',{name:'Inspect run'}).count(),0);
     const section = runner.locator('#adapter-list > details').filter({has:runner.getByRole('link',{name:'Set up '+uploadRecipe.title,includeHidden:true})});
     await section.getByRole('link',{name:'Set up '+uploadRecipe.title}).click();
-    await runner.waitForFunction(() => document.querySelector('#recipe')?.value === 'workshop/runner-upload');
+    await runner.waitForFunction(title => document.querySelector('#recipe')?.value === title,uploadRecipe.title);
     assert.equal(await tab.inputValue(),'open-app');
     await tab.selectOption(String(await worker.evaluate(async url => (await chrome.tabs.query({})).find(t=>t.url===url).id,target.url())));
     await runner.getByLabel('message', { exact: true }).fill('Sent');
@@ -71,7 +71,21 @@ export async function verifyRunner({ browser, worker, extensionOrigin, target, a
     assert.equal(await runner.getByRole('link', { name: 'Settings' }).getAttribute('target'), '_blank');
 
     await target.goto(new URL('/', target.url()).href);
-    await recipe.selectOption('workshop/read-scan');
+    await runner.getByRole('button',{name:'Browse recipes'}).click();
+    await runner.getByRole('option',{name:/Read test scan/}).waitFor();
+    await recipe.fill('no such recipe');
+    await runner.getByText('No matching recipes.',{exact:true}).waitFor();
+    await recipe.press('Escape');
+    assert.equal(await recipe.inputValue(),uploadRecipe.title);
+    await recipe.fill('read scan');
+    await recipe.press('ArrowDown');
+    assert.ok(await recipe.getAttribute('aria-activedescendant'));
+    if (process.env.RECIPE_PICKER_IMAGE) {
+      await runner.setViewportSize({width:360,height:850});
+      await runner.screenshot({path:process.env.RECIPE_PICKER_IMAGE});
+    }
+    await recipe.press('Enter');
+    assert.equal(await recipe.inputValue(),'Read test scan');
     await runner.getByRole('button', { name: 'Run here', exact: true }).click();
     await runner.getByText(/TARGET_UNAVAILABLE.*Step 1/).waitFor({ timeout: 6000 });
     assert.equal(await active(), focusedTabId);
