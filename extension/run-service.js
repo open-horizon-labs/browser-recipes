@@ -399,7 +399,12 @@ export function createRunService({browser,loadBundle,dispatch,allowModel,allowRe
         const indices = args.attachmentIndices ?? [];
         requireValue(Array.isArray(indices) && new Set(indices).size === indices.length &&
           indices.every(i => Number.isInteger(i) && i > 0 && i <= docs.attachments.length),'Unknown attachment.');
-        return plan('plan',{model:args.model,prompt:args.prompt,attachments:indices.map(i => docs.attachments[i-1])});
+        try {
+          return await plan('plan',{model:args.model,prompt:args.prompt,attachments:indices.map(i => docs.attachments[i-1])});
+        } catch (error) {
+          if (typeof error.code === 'string') throw new RecipeError(error.code,error.message);
+          throw error;
+        }
       }
       requireValue(command === 'runs.resume','Unknown run operation.');
       if (!['auth','open-app','account-review','background-tab','interrupt-check'].includes(tag)) {

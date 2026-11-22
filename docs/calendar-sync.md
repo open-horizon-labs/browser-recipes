@@ -15,6 +15,8 @@ Use this catalog workflow to mark Outlook meetings as **Busy** on a Google calen
 2. Enter each calendar’s time zone. Choose a model and **Send to ChatGPT**. The model returns event times and identifies entries it could not resolve.
 3. Choose **Prepare review**. Check the proposed blocks against Outlook. For example, if Outlook shows meetings from 9–10 and 11–12 and Google already shows the 9–10 block, only 11–12 should be offered as missing. **Stop here for a preview.** Reading, comparing and displaying this list creates no events.
 
+Scripts can request the same preview with account labels and a custom prompt in one CLI command. [CLI example](../bridge/README.md#preview-a-workflow-from-a-script)
+
 ![A test week with one missing Outlook block available for selection](images/getting-started/calendar-review.png)
 
 ## Filter or change events with your own instructions

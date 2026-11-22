@@ -56,7 +56,7 @@ export async function companionAgentRequest(pairingCode, command, args = {}) {
       body: JSON.stringify({ command, args }),
       credentials: 'omit',
       redirect: 'error',
-      signal: AbortSignal.timeout(['signin', 'signout'].includes(command) ? 235_000 : 50_000),
+      signal: AbortSignal.timeout(['signin', 'signout'].includes(command) ? 235_000 : command === 'plan' ? 160_000 : 50_000),
     });
   } catch {
     throw agentError('HELPER_UNAVAILABLE', 'Could not reach the paired helper. Check that it is still running on this computer.');

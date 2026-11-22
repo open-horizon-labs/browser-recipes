@@ -68,3 +68,17 @@ In **Settings → Site access**, enter the exact identity shown by the app, ente
 ```
 
 The extension looks for an inactive app tab and verifies the signed-in identity before using it. If it needs a new tab, it opens the recipe’s entry path (or the adapter’s app entry) in the background. A connection that needs sign-in returns a waiting run with a `pending.reviewUrl`. Open the review, choose **Open app in browser**, sign in, then return to the review to resume. The extension checks the identity again. Existing callers can still supply tab IDs.
+
+## Preview a workflow from a script
+
+Pass account labels by workflow role and named workflow inputs. This command uses the extension’s signed-in ChatGPT connection for agent steps. The custom prompt applies to this run.
+
+```sh
+./bridge/browser-recipes workflow preview outlook-to-google-calendar \
+  --account source=alixpartners --account destination=artium \
+  --input firstDay=2026-11-08 --input lastDay=2026-11-14 \
+  --input sourceTimeZone=America/New_York --input destinationTimeZone=America/New_York \
+  --prompt 'Ignore Google Calendar holidays and skip canceled Outlook events.'
+```
+
+Read `status` in the JSON response. At a selection, `preview` includes `choices` and `details`. At a write approval, sign-in, missing input, or attachment review, `waiting` identifies the pending action. A read-only workflow that finishes without a selection returns `completed` and its result. Errors exit nonzero. The CLI handles run and action IDs internally. Use `--model` to select a different available model.

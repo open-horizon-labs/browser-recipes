@@ -125,7 +125,7 @@ function responseError(status) {
 
 async function request(url, options = {}) {
   try {
-    return await fetch(url, { ...options, redirect: 'error', signal: AbortSignal.timeout(REQUEST_TIMEOUT) });
+    return await fetch(url, { ...options, redirect: 'error', signal: AbortSignal.timeout(url === RESOURCE + '/responses' ? 150_000 : REQUEST_TIMEOUT) });
   } catch {
     throw new AgentError('PROVIDER_UNAVAILABLE', 'Could not reach OpenAI. Try again.');
   }
