@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "browser-recipes"
+version = "0.1.0"
+description = "Local command-line bridge for the Browser Recipes extension"
+requires-python = ">=3.9"
+license = {text = "Apache-2.0"}
+
+[project.scripts]
+browser-recipes = "browser_recipes:main"
+
+[tool.setuptools]
+py-modules = ["browser_recipes", "bridge_transport"]

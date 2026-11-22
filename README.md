@@ -12,7 +12,7 @@ This repo contains the extension, recipe interpreter, and CLI. The companion cat
 2. Open **Settings → Browse community catalog**, install a recipe or workflow, and grant access to the sites it uses.
 3. Open the app, then open **Browser Recipes** and choose a recipe. For a workflow, open **Workflows**.
 
-For workflows that use ChatGPT, set up the local helper on your platform. The optional terminal bridge lets scripts and agents call recipes. [ChatGPT setup](docs/chatgpt-agent.md) · [CLI setup](bridge/README.md)
+For workflows that use ChatGPT, set up the local helper on your platform. The optional terminal bridge lets scripts and agents call recipes on Linux, macOS, and Windows. [ChatGPT setup](docs/chatgpt-agent.md) · [CLI setup](bridge/README.md)
 
 ## Features
 

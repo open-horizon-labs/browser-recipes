@@ -1,22 +1,26 @@
 # Run recipes from the terminal
 
-The terminal bridge ships with installation support for Linux. The CLI sends JSON over a Unix socket to a native messaging host. The host forwards requests to the extension and returns its replies. The socket is private to your desktop account. Any program running under that account can send commands while the bridge is connected.
+Use the same `browser-recipes` commands on Linux, macOS, and Windows. The CLI talks to the extension through a local native messaging host. Linux and macOS use a private Unix socket. Windows uses a named pipe authenticated with a key in your desktop profile. Programs running under your desktop account can send commands while the bridge is enabled.
 
 ## Connect a browser
 
-Use Python 3.9 or later.
+Install Python 3.9 or later and pipx. From the repository root, run:
 
-1. Load Browser Recipes as an unpacked extension and copy its ID from the browser's Extensions page.
-2. From the repository root, register the executable for that ID.
+```sh
+pipx install ./bridge
+```
+
+1. Load the unpacked extension. Copy its ID from the browser’s Extensions page.
+2. Register the host using the same command on all three platforms.
 
    ```sh
-   ./bridge/browser-recipes install YOUR_EXTENSION_ID
+   browser-recipes install YOUR_EXTENSION_ID
    ```
 
-   For Chromium, add `--browser chromium`. For BrowserOS neo using the Linux
-   `browser-claw` data directory, add `--browser browseros-neo`. The manifest uses the absolute
-   path of this checkout. Register again if you move it.
-3. Open Browser Recipes Options and select **Run recipes from the terminal → Allow programs on this computer to run recipes**. Only one browser connection can use the socket at a time.
+   For unbranded Chromium, add `--browser chromium`. On Linux, use `--browser browseros-neo` for BrowserOS neo with the `browser-claw` profile directory.
+3. In Browser Recipes Settings, enable **Allow programs on this computer to run recipes**. One browser connection can use the bridge at a time.
+
+Check the connection with `browser-recipes tabs`. The Linux checkout command `./bridge/browser-recipes` also works for existing installations.
 
 ## Run recipes and workflows
 
@@ -25,15 +29,15 @@ Use `definitions.list` to discover operations, `runs.start` to call a recipe or 
 ## Commands
 
 ```sh
-./bridge/browser-recipes catalog
-./bridge/browser-recipes tabs
-./bridge/browser-recipes run '{"tabId":123,"adapterId":"example","recipeId":"read","inputs":{}}'
-./bridge/browser-recipes dev.inspect '{"tabId":123,"adapterId":"example"}'
-./bridge/browser-recipes dev.test - < test-request.json
-./bridge/browser-recipes dev.failures
+browser-recipes catalog
+browser-recipes tabs
+browser-recipes run '{"tabId":123,"adapterId":"example","recipeId":"read","inputs":{}}'
+browser-recipes dev.inspect '{"tabId":123,"adapterId":"example"}'
+browser-recipes dev.test - < test-request.json
+browser-recipes dev.failures
 ```
 
-Pass an argument object as a JSON string or use `-` to read JSON from stdin.
+Pass an argument object as a JSON string or use `-` to read UTF-8 JSON from stdin. To avoid native argument quoting in PowerShell, pipe the JSON to the command. For example, `Get-Content -Raw request.json | browser-recipes runs.start -`.
 `dev.test` accepts an object with `tabId`, `adapterId`, `recipe`, and
 `inputs`. Use `catalog` and `tabs` to obtain identifiers from the browser.
 
@@ -41,7 +45,7 @@ On success the CLI prints JSON to stdout. On failure it exits with status 1. Bro
 
 `BUSY` means another command is running. A timeout means the browser did not reply before the deadline. Check the page before retrying a command that writes data.
 
-Disable the bridge in Options to disconnect. To unregister the host, delete the manifest at the path printed by `install`.
+Disable the bridge in Settings to disconnect. Delete the manifest at the path printed by `install` to unregister the host. On Windows, you can also remove the host’s `org.openhorizonlabs.tab_recipes` entry under the browser’s per-user `NativeMessagingHosts` registry key.
 
 ## Tests
 
@@ -60,14 +64,14 @@ At a workflow's pending agent step, `runs.agentReview` returns the model inputs 
 In **Settings → Site access**, enter the exact identity shown by the app, enter an integration account label, and choose **Label this account**. You can name multiple identities for one adapter. To label an account already pinned in Settings from the CLI:
 
 ```sh
-./bridge/browser-recipes accounts.list
-./bridge/browser-recipes accounts.label '{"adapterId":"outlook","label":"217castle.com"}'
-./bridge/browser-recipes accounts.label '{"adapterId":"google-calendar","label":"personal"}'
-./bridge/browser-recipes run --adapter outlook --account 217castle.com --recipe read-calendar-week
-./bridge/browser-recipes runs.start '{"kind":"workflow","workflowId":"outlook-to-google-calendar","accounts":{"source":"217castle.com","destination":"personal"},"inputs":{"firstDay":"2026-11-08","lastDay":"2026-11-14","sourceTimeZone":"America/New_York","destinationTimeZone":"America/New_York"}}'
+browser-recipes accounts.list
+browser-recipes accounts.label '{"adapterId":"outlook","label":"217castle.com"}'
+browser-recipes accounts.label '{"adapterId":"google-calendar","label":"personal"}'
+browser-recipes run --adapter outlook --account 217castle.com --recipe read-calendar-week
+browser-recipes runs.start '{"kind":"workflow","workflowId":"outlook-to-google-calendar","accounts":{"source":"217castle.com","destination":"personal"},"inputs":{"firstDay":"2026-11-08","lastDay":"2026-11-14","sourceTimeZone":"America/New_York","destinationTimeZone":"America/New_York"}}'
 ```
 
-Add `--inputs '{"first-day":"2026-11-08","last-day":"2026-11-14"}'` for a date range. For string values, you can also repeat `--input NAME=VALUE` as in `workflow preview`. To call the CLI as `browser-recipes` from any directory, put the executable on your PATH.
+Add `--inputs '{"first-day":"2026-11-08","last-day":"2026-11-14"}'` for a date range. For string values, you can also repeat `--input NAME=VALUE` as in `workflow preview`.
 
 The extension looks for an inactive app tab and verifies the signed-in identity before using it. If it needs a new tab, it opens the recipe’s entry path (or the adapter’s app entry) in the background. A connection that needs sign-in returns a waiting run with a `pending.reviewUrl`. Open the review, choose **Open app in browser**, sign in, then return to the review to resume. The extension checks the identity again. Existing callers can still supply tab IDs.
 
@@ -76,7 +80,7 @@ The extension looks for an inactive app tab and verifies the signed-in identity 
 Pass account labels by workflow role and named workflow inputs. This command uses the extension’s signed-in ChatGPT connection for agent steps. The custom prompt applies to this run.
 
 ```sh
-./bridge/browser-recipes workflow preview outlook-to-google-calendar \
+browser-recipes workflow preview outlook-to-google-calendar \
   --account source=217castle.com --account destination=personal \
   --input firstDay=2026-11-08 --input lastDay=2026-11-14 \
   --input sourceTimeZone=America/New_York --input destinationTimeZone=America/New_York \

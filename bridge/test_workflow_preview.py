@@ -1,10 +1,8 @@
 import json
-from pathlib import Path
-import runpy
 from types import SimpleNamespace
 import unittest
 
-preview = runpy.run_path(str(Path(__file__).with_name("browser-recipes")))["workflow_preview"]
+from browser_recipes import workflow_preview as preview
 
 
 class PreviewTests(unittest.TestCase):

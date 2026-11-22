@@ -47,22 +47,16 @@ In Workflows, enable **Review inputs and results with ChatGPT** to pause between
 
 ## Use a desktop chat or script
 
-Claude or ChatGPT Desktop can walk you through the steps above while you use the panel. To let an agent run recipes itself, give it a terminal on the Linux desktop where the browser is open. An ordinary chat has no built-in Browser Recipes connector. For an installed workflow with an agent step, open **Workflows** and use **Sign in with ChatGPT**. The same connection powers the Guide. [Set up the connection](chatgpt-agent.md)
+Claude or ChatGPT Desktop can walk you through the steps above while you use the panel. To let an agent run recipes itself, give it a terminal on the desktop where the browser is open. An ordinary chat has no built-in Browser Recipes connector. For an installed workflow with an agent step, open **Workflows** and use **Sign in with ChatGPT**. The same connection powers the Guide. [Set up the connection](chatgpt-agent.md)
 
-For terminal access on Linux, install Python 3.9 or later and open `chrome://extensions`. Copy the 32-character Browser Recipes ID. From the runtime checkout, run **one** of these commands with your ID:
+Install and register the CLI on the computer where the browser is open. Linux, macOS, and Windows use the same commands. [CLI setup](../bridge/README.md#connect-a-browser)
 
-| Browser | Register the local CLI |
-| --- | --- |
-| Google Chrome | `./bridge/browser-recipes install YOUR_EXTENSION_ID` |
-| Chromium | `./bridge/browser-recipes install YOUR_EXTENSION_ID --browser chromium` |
-| BrowserOS neo using the browser-claw data directory | `./bridge/browser-recipes install YOUR_EXTENSION_ID --browser browseros-neo` |
-
-In Browser Recipes settings, check **Allow programs on this computer to run recipes**. Run these from the runtime checkout. Use your Outlook account label in place of `217castle.com`. [Set up an account label](../bridge/README.md#run-by-account-label) Use `outlook-office` as the adapter ID if your tab uses `outlook.office.com`.
+In Browser Recipes settings, check **Allow programs on this computer to run recipes**. Use your Outlook account label in place of `217castle.com`. [Set up an account label](../bridge/README.md#run-by-account-label) Use `outlook-office` as the adapter ID if your tab uses `outlook.office.com`.
 
 ```sh
-./bridge/browser-recipes catalog
-./bridge/browser-recipes accounts.list
-./bridge/browser-recipes run --adapter outlook --account 217castle.com --recipe read-calendar-week
+browser-recipes catalog
+browser-recipes accounts.list
+browser-recipes run --adapter outlook --account 217castle.com --recipe read-calendar-week
 ```
 
 The result includes a `runId` and the visible week’s events in `outputs.events`. To read specific dates, pass both bounds, for example `--inputs '{"first-day":"2026-11-08","last-day":"2026-11-14"}'`. Both dates are inclusive.
@@ -90,6 +84,6 @@ Give the agent the [catalog authoring skill](https://github.com/open-horizon-lab
 | The CLI cannot connect | Check that the extension is enabled in the intended profile. Register the ID for that browser again. Toggle **Allow programs on this computer to run recipes** off and on, then try `catalog`. |
 | The adapter is missing from `catalog` | Check for **Changes installed.** Under **Site access**, a granted site shows **Revoke access**. |
 | `tabs` returns an empty list | Open the app in the profile with the extension. Check that the page’s domain matches the origin you granted. Run `tabs` again. |
-| A recipe fails on a step | Open **Failure details** in the runner and copy the report. Give the agent the recipe ID, catalog revision (`git -C ../browser-recipes-catalog rev-parse HEAD` for a clean checkout), and returned error. Include the run ID, failed step, operation, target, and completed steps when present. For recent failure records, enable **Developer tools** and run `./bridge/browser-recipes dev.failures`. Check the app before retrying a write. |
+| A recipe fails on a step | Open **Failure details** in the runner and copy the report. Give the agent the recipe ID, catalog revision (`git -C ../browser-recipes-catalog rev-parse HEAD` for a clean checkout), and returned error. Include the run ID, failed step, operation, target, and completed steps when present. For recent failure records, enable **Developer tools** and run `browser-recipes dev.failures`. Check the app before retrying a write. |
 
 To disconnect, uncheck **Allow programs on this computer to run recipes**. While it is on, other programs running under your desktop account can issue commands. Use **Revoke access** to withdraw permission for an individual site. [CLI reference](../bridge/README.md) · [Recipe format](recipes.md)

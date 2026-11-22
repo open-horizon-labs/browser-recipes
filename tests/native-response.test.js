@@ -6,13 +6,14 @@ import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { nativeResponseFrames } from '../extension/native-response.js';
 
-const bridge = fileURLToPath(new URL('../bridge/browser-recipes', import.meta.url));
+const bridge = fileURLToPath(new URL('../bridge/', import.meta.url));
 const id = 'native-response-test';
 const maxFrameBytes = 1024 * 1024;
 const decodeInCli = [
-  'import base64, hashlib, runpy, sys',
-  'bridge = runpy.run_path(sys.argv[1])',
-  'response = bridge["read_response"](sys.stdin.buffer, sys.argv[2])',
+  'import base64, hashlib, sys',
+  'sys.path.insert(0, sys.argv[1])',
+  'from browser_recipes import read_response',
+  'response = read_response(sys.stdin.buffer, sys.argv[2])',
   'result = response["result"]',
   'print(result["name"])',
   'print(hashlib.sha256(base64.b64decode(result["base64"], validate=True)).hexdigest())',
