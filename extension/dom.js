@@ -105,6 +105,14 @@ export async function executeDom({ origin, paths, identity, expected, op, at, co
         /password|passwd|one-time-code|otp|sec(?:urity)?[-_ ]?code|cc[-_]|credit[-_ ]?card/i.test(hint);
     }
 
+    function publicLink(item) {
+      if (!item.matches('a[href]')) return null;
+      try {
+        const url = new URL(item.href);
+        return ['http:','https:'].includes(url.protocol) && !url.username && !url.password ? url.href : null;
+      } catch { return null; }
+    }
+
     function labelOf(element, attributeName) {
       if (attributeName === 'label') {
         return element.getAttribute('aria-label') ??
@@ -160,7 +168,7 @@ export async function executeDom({ origin, paths, identity, expected, op, at, co
             const renderedText = checkbox ? '' : item.innerText.trim();
             if (text !== undefined && !clean(renderedText,4096).toLowerCase().includes(clean(text,160).toLowerCase())) continue;
             const values = Object.fromEntries(attributes.flatMap(name => {
-              const value = name === 'checked' && checkbox ? String(item.checked) : labelOf(item, name);
+              const value = name === 'href' ? publicLink(item) : name === 'checked' && checkbox ? String(item.checked) : labelOf(item, name);
               return value === null ? [] : [[name, value]];
             }));
             if (rows.length === 500 || renderedText.length > 4096 || Object.values(values).some(value => value.length > 4096)) {

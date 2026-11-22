@@ -41,7 +41,7 @@ export async function setupWorkflows({ extensionId, hosts, stage }) {
   const catalogPath = process.env.BROWSER_RECIPES_CATALOG;
   const packed = catalogPath && JSON.parse(execFileSync(process.execPath,[path.join(catalogPath,'scripts/pack.mjs')]));
   const adapters = packed ? packed.adapters : JSON.parse(await readFile(calendarFixture('adapters.json')));
-  const workflows = packed ? packed.workflows.filter(w => ['outlook-to-google-calendar','compare-hacker-news'].includes(w.id)) : JSON.parse(await readFile(calendarFixture('workflows.json')));
+  const workflows = packed ? packed.workflows.filter(w => ['outlook-to-google-calendar','compare-hacker-news','filter-hacker-news'].includes(w.id)) : JSON.parse(await readFile(calendarFixture('workflows.json')));
   const pages = [];
   async function serve(routes) {
     const result = await servePages(routes);
@@ -226,6 +226,25 @@ async function verifyHeadlines({ browser, extensionOrigin, fixtures, active }) {
     assert.match(await comparison.locator('pre').textContent(), /Fixture newest headline/);
     assert.equal(await active(), before);
     assert.deepEqual(await fixtures.commands(), [...prior, 'status']);
+    if (fixtures.bundle.workflows.some(w => w.id === 'filter-hacker-news')) {
+      const tabId = Number(await picker.inputValue());
+      const result = await runner.evaluate(async tabId => {
+        const send = (command,args) => chrome.runtime.sendMessage({command,args});
+        const started = await send('runs.start',{kind:'workflow',workflowId:'filter-hacker-news',tabs:{news:tabId}});
+        if (!started.result?.pending) throw new Error(JSON.stringify(started));
+        const {runId,pending} = started.result;
+        const reviewed = await send('runs.agentReview',{runId,actionId:pending.id});
+        return {tag:pending.tag,inputs:reviewed.result?.inputs};
+      },tabId);
+      assert.equal(result.tag,'agent');
+      assert.deepEqual(result.inputs['front-page'],[
+        {text:'Fixture front-page headline',attributes:{href:fixtures.news.origin+'/news'}},
+        {text:'Fixture ranked story',attributes:{href:'https://example.test/story'}},
+        {text:'Fixture unsupported link',attributes:{}},
+      ]);
+      assert.equal(result.inputs.newest[1].text,'Fixture fresh story');
+      assert.equal(await active(),before);
+    }
     if (process.env.WORKFLOW_RUNNER_IMAGE) {
       const tabId = await picker.inputValue();
       await runner.goto(extensionOrigin + '/runner.html');

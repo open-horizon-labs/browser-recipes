@@ -152,7 +152,7 @@ export function validateRecipe(recipe, adapter) {
       const attributes = step.attributes;
       expect(Array.isArray(attributes) && attributes.length <= 8 && new Set(attributes).size === attributes.length &&
         attributes.every(name => typeof name === 'string' &&
-          /^(?:aria-(?:label|checked|selected|expanded)|data-(?:eventid|calitemid|datekey)|checked|label)$/.test(name)), location);
+          /^(?:aria-(?:label|checked|selected|expanded)|data-(?:eventid|calitemid|datekey)|checked|label|href)$/.test(name)), location);
     }
     if (step.op === 'readList') {
       if (step.minRows !== undefined) expect(Number.isInteger(step.minRows) && step.minRows >= 1 && step.minRows <= 500, location);
