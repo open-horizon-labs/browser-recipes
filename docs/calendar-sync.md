@@ -19,7 +19,7 @@ Use this catalog workflow to mark Outlook meetings as **Busy** on a Google calen
 
 ## Filter or change events with your own instructions
 
-Before reading Outlook, check **Review each recipe’s inputs and outputs for optional ChatGPT edits**. Run the Outlook read, then open **Filter or change outputs with ChatGPT**. For example, enter “Remove events whose title starts with FYI. Change the remaining meeting titles to Busy in both the text and the event labels.” Choose **Review request**, check the data, and send it. Compare the proposal with the original. Choose **Use proposed outputs** and then **Continue with these outputs** to pass the edited week to the next step. The meetings in Outlook stay as they were.
+Before reading Outlook, check **Review each recipe’s inputs and outputs for optional ChatGPT edits**. Run the Outlook read, then open **Filter or change outputs with ChatGPT**. For example, enter “Remove events whose title starts with FYI. Change the remaining meeting titles to Busy in both the text and the event labels.” Choose **Review request**, check the data, and send it. ChatGPT interprets the instruction and proposes edits to the rows. The review shows how many list items it proposes to remove and how many values it proposes to change. If it proposes no edits, your original output stays in use. Compare the proposal with the original. Choose **Use proposed outputs** and then **Continue with these outputs** to pass the edited week to the next step. The meetings in Outlook stay as they were.
 
 For a recipe that takes inputs, the same controls appear before it runs. Applying a proposed input fills in the reviewed values. You still choose whether to execute the recipe.
 
@@ -31,4 +31,4 @@ For a recipe that takes inputs, the same controls appear before it runs. Applyin
 
 Each run copies selected occurrences in one direction. A change or cancellation in Outlook requires checking the old Google block. The file omits attendees, locations and meeting links.
 
-The [browser integration test](../integration/calendar.mjs) uses synthetic calendars and a simulated model response. It checks the preview, the destination guard and the import receipt. Live ChatGPT consent and an import into a real account require separate verification.
+The [browser integration test](../integration/calendar.mjs) uses synthetic calendars and a simulated model response. It checks the preview, the destination guard and the import receipt. The [live recipe-edit test](../integration/live-recipe-edit.mjs) uses your existing Browser Recipes ChatGPT sign-in with synthetic event rows. Run `node integration/live-recipe-edit.mjs` after building the extension to check that accepted model edits reach the next workflow step.
