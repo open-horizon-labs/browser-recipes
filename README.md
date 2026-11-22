@@ -14,7 +14,7 @@ Take “read the first active expense report in Concur.” To do that by hand, y
 ]
 ```
 
-The **adapter** defines what `first-report` means on this site. It gives the control a CSS selector and declares the exact origin where it can be used. The **recipe** defines what to do with that control and names the output. If Concur changes the report card markup, a maintainer can update the selector in one place. Callers still ask for the same recipe and read the same `summary` field. [Concur adapter and recipe](https://github.com/open-horizon-labs/tab-recipes-catalog/blob/main/adapters/concur.json)
+The **adapter** defines what `first-report` means on this site. It gives the control a CSS selector and declares the exact origin where it can be used. The **recipe** defines what to do with that control and names the output. If Concur changes the report card markup, a maintainer can update the selector in one place. Callers still ask for the same recipe and read the same `summary` field. [Concur adapter and recipe](https://github.com/open-horizon-labs/tab-recipes-catalog/tree/main/adapters/concur)
 
 Once you grant access to the site, a caller lists the available recipes and tabs, then sends the recipe ID, tab ID, and inputs through the local CLI. The extension acts on the page in that tab’s browser session. The sequence is fixed, but the data is live. For Concur, the result contains the report summary visible to the signed-in user at the time of the call.
 

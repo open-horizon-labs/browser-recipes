@@ -39,4 +39,4 @@ Declare a directory with a trailing slash, as in `"documentPaths":["/files/"]`. 
 
 ## Failure handoff
 
-Save the CLI's error JSON and the catalog commit you installed. Open developer tools in extension settings and use `dev.failures` for recent failures. Compare the operation and step number with the versioned recipe, use `dev.inspect` to find the current control, and exercise the patch using `dev.test`. A successful draft can be added to the adapter JSON and shared through a catalog pull request. Turn developer tools off when you return to ordinary replay.
+Save the CLI's error JSON and the catalog commit you installed. Open developer tools in extension settings and use `dev.failures` for recent failures. Compare the operation and step number with the versioned recipe, use `dev.inspect` to find the current control, and exercise the patch using `dev.test`. A successful draft can be saved as its own file under the adapter’s `recipes/` directory and shared through a catalog pull request. Turn developer tools off when you return to ordinary replay.
