@@ -63,9 +63,11 @@ In **Settings → Site access**, enter the exact identity shown by the app, ente
 ./bridge/browser-recipes accounts.list
 ./bridge/browser-recipes accounts.label '{"adapterId":"outlook","label":"alixpartners"}'
 ./bridge/browser-recipes accounts.label '{"adapterId":"google-calendar","label":"artium"}'
-./bridge/browser-recipes run '{"adapterId":"outlook","recipeId":"read-calendar-week","account":"alixpartners"}'
+./bridge/browser-recipes run --adapter outlook --account alixpartners --recipe read-calendar-week
 ./bridge/browser-recipes runs.start '{"kind":"workflow","workflowId":"outlook-to-google-calendar","accounts":{"source":"alixpartners","destination":"artium"},"inputs":{"firstDay":"2026-11-08","lastDay":"2026-11-14","sourceTimeZone":"America/New_York","destinationTimeZone":"America/New_York"}}'
 ```
+
+Add `--inputs '{"first-day":"2026-11-08","last-day":"2026-11-14"}'` for a date range. For string values, you can also repeat `--input NAME=VALUE` as in `workflow preview`. To call the CLI as `browser-recipes` from any directory, put the executable on your PATH.
 
 The extension looks for an inactive app tab and verifies the signed-in identity before using it. If it needs a new tab, it opens the recipe’s entry path (or the adapter’s app entry) in the background. A connection that needs sign-in returns a waiting run with a `pending.reviewUrl`. Open the review, choose **Open app in browser**, sign in, then return to the review to resume. The extension checks the identity again. Existing callers can still supply tab IDs.
 

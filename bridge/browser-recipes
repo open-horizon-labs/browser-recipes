@@ -338,6 +338,25 @@ def workflow_preview(options, send):
     return {"result": {"status": run["status"], "runId": run["runId"], "result": run.get("result")}}
 
 
+def recipe_arguments(options, parser):
+    supplied = (options.adapter, options.recipe, options.account, options.inputs, options.input)
+    if not any(value is not None for value in supplied):
+        return options.args if options.args is not None else "{}"
+    if options.args is not None:
+        parser.error("Use either recipe flags or a positional JSON request.")
+    if not all((options.adapter, options.recipe, options.account)):
+        parser.error("Flag-based run requires --adapter, --account and --recipe.")
+    request = {"adapterId": options.adapter, "account": options.account, "recipeId": options.recipe}
+    if options.inputs is not None:
+        inputs = json.loads(options.inputs)
+        if not isinstance(inputs, dict):
+            parser.error("--inputs expects a JSON object.")
+        request["inputs"] = inputs
+    elif options.input:
+        request["inputs"] = assignments(options.input)
+    return json.dumps(request)
+
+
 def main():
     # Chromium invokes the executable with the calling extension origin.
     if len(sys.argv) > 1 and re.fullmatch(r"chrome-extension://[a-p]{32}/", sys.argv[1]):
@@ -351,7 +370,15 @@ def main():
     registration.add_argument("--browser", choices=HOST_PATHS, default="chrome")
     for command in COMMANDS:
         subcommand = subcommands.add_parser(command)
-        subcommand.add_argument("args", nargs="?", default="{}", help="JSON object, or - to read from stdin")
+        subcommand.add_argument("args", nargs="?", default=None if command == "run" else "{}",
+                                help="JSON request, or - to read the request from stdin")
+        if command == "run":
+            subcommand.add_argument("--adapter", metavar="ID")
+            subcommand.add_argument("--account", metavar="LABEL")
+            subcommand.add_argument("--recipe", metavar="ID")
+            inputs = subcommand.add_mutually_exclusive_group()
+            inputs.add_argument("--inputs", metavar="JSON", help="Recipe inputs as a JSON object")
+            inputs.add_argument("--input", action="append", metavar="NAME=VALUE", help="Repeat for string inputs")
     workflows = subcommands.add_parser("workflow")
     preview = workflows.add_subparsers(dest="operation", required=True).add_parser("preview")
     preview.add_argument("workflow_id")
@@ -364,7 +391,11 @@ def main():
         print(install(options.extension_id, options.browser))
         return 0
 
-    response = workflow_preview(options, invoke) if options.command == "workflow" else invoke(options.command, options.args)
+    if options.command == "workflow":
+        response = workflow_preview(options, invoke)
+    else:
+        args = recipe_arguments(options, parser) if options.command == "run" else options.args
+        response = invoke(options.command, args)
     if "error" in response:
         print(json.dumps({k: v for k, v in response.items() if k in ("error", "runId")}, indent=2))
         return 1

@@ -55,15 +55,15 @@ For terminal access, install Python 3.9 or later and open `chrome://extensions`.
 | Chromium | `./bridge/browser-recipes install YOUR_EXTENSION_ID --browser chromium` |
 | BrowserOS neo using the browser-claw data directory | `./bridge/browser-recipes install YOUR_EXTENSION_ID --browser browseros-neo` |
 
-In Browser Recipes settings, check **Allow programs on this computer to run recipes**. Run these from the runtime checkout. In the last command, replace `123` with the Outlook tab ID from `tabs`. Use `outlook-office` as the adapter ID if your tab uses `outlook.office.com`.
+In Browser Recipes settings, check **Allow programs on this computer to run recipes**. Run these from the runtime checkout. Use your Outlook account label in place of `alixpartners`. [Set up an account label](../bridge/README.md#run-by-account-label) Use `outlook-office` as the adapter ID if your tab uses `outlook.office.com`.
 
 ```sh
 ./bridge/browser-recipes catalog
-./bridge/browser-recipes tabs
-./bridge/browser-recipes run '{"tabId":123,"adapterId":"outlook","recipeId":"read-calendar-week","inputs":{}}'
+./bridge/browser-recipes accounts.list
+./bridge/browser-recipes run --adapter outlook --account alixpartners --recipe read-calendar-week
 ```
 
-The result includes a `runId` and the visible week’s events in `outputs.events`. To read specific dates, pass both bounds, for example `"inputs":{"first-day":"2026-11-08","last-day":"2026-11-14"}`. Both dates are inclusive.
+The result includes a `runId` and the visible week’s events in `outputs.events`. To read specific dates, pass both bounds, for example `--inputs '{"first-day":"2026-11-08","last-day":"2026-11-14"}'`. Both dates are inclusive.
 
 ![Settings showing a connected terminal helper](images/getting-started/connected.png)
 
