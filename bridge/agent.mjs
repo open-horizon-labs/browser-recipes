@@ -1,10 +1,11 @@
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { createHash, createPublicKey, randomBytes, randomUUID, timingSafeEqual, verify } from 'node:crypto';
 import { constants, fstatSync, lstatSync, mkdirSync, openSync, closeSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { endianness, homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { validateAgentAttachments } from '../extension/workflow-documents.js';
 
 const HOST = 'org.openhorizonlabs.browser_recipes_agent';
 const AUTH = 'https://auth.openai.com';
@@ -15,7 +16,12 @@ const PLAN_SCOPE = 'chatgpt.tokens.use.direct';
 const SCOPES = 'openid profile email offline_access resource.invoke ' + PLAN_SCOPE;
 const CALLBACK = '/auth/callback';
 const MAX_FRAME = 1024 * 1024;
+const MAX_REQUEST_FRAME = 12 * MAX_FRAME;
 const REQUEST_TIMEOUT = 35_000;
+const invalidRefreshTokens = new Set([
+  'invalid_grant', 'invalid_refresh_token', 'token_expired',
+  'refresh_token_expired', 'refresh_token_invalidated', 'refresh_token_reused',
+]);
 
 class AgentError extends Error {
   constructor(code, message) {
@@ -29,13 +35,32 @@ function requireCondition(condition, code, message) {
 }
 
 const nonempty = value => typeof value === 'string' && value.length > 0;
-const configRoot = () => process.env.XDG_CONFIG_HOME || join(homedir(), '.config');
+const windows = process.platform === 'win32';
+const powerShell = () => join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+const configRoot = () => process.env.XDG_CONFIG_HOME || (windows
+  ? process.env.LOCALAPPDATA || join(homedir(), 'AppData', 'Local')
+  : process.platform === 'darwin' ? join(homedir(), 'Library', 'Application Support') : join(homedir(), '.config'));
+const privateOwner = info => windows || (info.uid === process.getuid() && !(info.mode & 0o077));
 
-function privateRoot() {
-  const path = join(configRoot(), 'browser-recipes-agent');
+function dpapi(method, value) {
+  const script = "$ErrorActionPreference = 'Stop'; Add-Type -AssemblyName System.Security;" +
+    "$bytes = [Convert]::FromBase64String([Console]::In.ReadToEnd());" +
+    "[Console]::Write([Convert]::ToBase64String([System.Security.Cryptography.ProtectedData]::" +
+    method + "($bytes, $null, [System.Security.Cryptography.DataProtectionScope]::CurrentUser)))";
+  try {
+    return execFileSync(powerShell(), ['-NoProfile', '-NonInteractive', '-Command', script], {
+      input: value, encoding: 'utf8', windowsHide: true, timeout: 5_000, stdio: ['pipe', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    throw new AgentError('LOCAL_STORAGE', 'Windows could not protect or read this user’s agent session.');
+  }
+}
+
+export function privateRoot(name = 'browser-recipes-agent') {
+  const path = join(configRoot(), name);
   mkdirSync(path, { recursive: true, mode: 0o700 });
   const info = lstatSync(path);
-  requireCondition(info.isDirectory() && info.uid === process.getuid() && !(info.mode & 0o077),
+  requireCondition(info.isDirectory() && privateOwner(info),
     'LOCAL_STORAGE', 'The agent directory must be private and owned by the current user.');
   return path;
 }
@@ -44,11 +69,15 @@ function readState(root) {
   const path = join(root, 'session.json');
   let fd;
   try {
-    fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+    if (windows) {
+      requireCondition(!lstatSync(path).isSymbolicLink(), 'LOCAL_STORAGE', 'The agent session must be a regular local file.');
+    }
+    fd = openSync(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
     const info = fstatSync(fd);
-    requireCondition(info.isFile() && info.uid === process.getuid() && !(info.mode & 0o077) && info.size < MAX_FRAME,
+    requireCondition(info.isFile() && privateOwner(info) && info.size < MAX_FRAME,
       'LOCAL_STORAGE', 'The agent session file must be private and owned by the current user.');
-    return JSON.parse(readFileSync(fd, 'utf8'));
+    const stored = readFileSync(fd, 'utf8');
+    return JSON.parse(windows ? Buffer.from(dpapi('Unprotect', stored), 'base64').toString('utf8') : stored);
   } catch (error) {
     if (error.code === 'ENOENT') return {};
     throw error;
@@ -67,6 +96,11 @@ function writePrivate(path, value, mode = 0o600) {
   }
 }
 
+function writeSession(path, session) {
+  const value = JSON.stringify(session);
+  writePrivate(path, windows ? dpapi('Protect', Buffer.from(value).toString('base64')) : value);
+}
+
 function status(session) {
   return {
     connected: nonempty(session.refreshToken) && (session.scope ?? '').split(/\s+/).includes(PLAN_SCOPE),
@@ -79,11 +113,13 @@ function safeEndpoint(value, expected) {
   return value;
 }
 
-function responseError(status, profile = false) {
-  if (status === 401 || status === 403 || (profile && status === 400)) {
+function responseError(status) {
+  if (status === 401) {
     return new AgentError('SIGN_IN_REQUIRED', 'Continue with ChatGPT to renew access.');
   }
+  if (status === 403) return new AgentError('PROVIDER_FORBIDDEN', 'OpenAI denied access. Check ChatGPT plan eligibility and workspace policy.');
   if (status === 429) return new AgentError('USAGE_LIMIT', 'OpenAI rate or plan usage limit reached. Check ChatGPT Settings.');
+  if (status === 503) return new AgentError('PROVIDER_UNAVAILABLE', 'OpenAI is temporarily unavailable. Try again later.');
   return new AgentError('PROVIDER_ERROR', 'OpenAI could not complete the request.');
 }
 
@@ -95,9 +131,20 @@ async function request(url, options = {}) {
   }
 }
 
-async function jsonRequest(url, options = {}, profile = false) {
-  const response = await request(url, options);
-  if (!response.ok) throw responseError(response.status, profile);
+export async function jsonRequest(url, options = {}, profile = false, send = request) {
+  const response = await send(url, options);
+  if (!response.ok) {
+    if (profile && response.status < 500) {
+      const body = await response.json().catch(() => null);
+      const error = typeof body?.error === 'string' ? body.error : body?.error?.code;
+      if (error === 'invalid_client') throw new AgentError('OAUTH_CLIENT_INVALID', 'OpenAI rejected this app’s saved OAuth registration.');
+      if (options.body?.get('grant_type') === 'refresh_token' && invalidRefreshTokens.has(error)) {
+        throw new AgentError('SESSION_EXPIRED', 'The ChatGPT session expired or was disconnected. Sign in again.');
+      }
+      if (error === 'invalid_grant') throw new AgentError('SIGN_IN_REQUIRED', 'The authorization code expired. Sign in again.');
+    }
+    throw responseError(response.status);
+  }
   return response.json();
 }
 
@@ -181,7 +228,16 @@ function authCallback(state, previousClient) {
 
 function openBrowser(url) {
   return new Promise((resolve, reject) => {
-    const child = spawn('xdg-open', [url], { stdio: 'ignore' });
+    const command = windows ? powerShell() : process.platform === 'darwin' ? '/usr/bin/open' : 'xdg-open';
+    const script = "$ErrorActionPreference = 'Stop'; $start = New-Object System.Diagnostics.ProcessStartInfo;" +
+      "$start.FileName = [Console]::In.ReadToEnd(); $start.UseShellExecute = $true;" +
+      "[void][System.Diagnostics.Process]::Start($start)";
+    const args = windows ? ['-NoProfile', '-NonInteractive', '-Command', script] : [url];
+    const child = spawn(command, args, { stdio: [windows ? 'pipe' : 'ignore', 'ignore', 'ignore'], windowsHide: true });
+    if (windows) {
+      child.stdin.on('error', () => {});
+      child.stdin.end(url);
+    }
     const failed = () => reject(new AgentError('BROWSER_UNAVAILABLE', 'Could not open the system browser for ChatGPT sign-in.'));
     child.once('error', failed);
     child.once('exit', code => { if (code === 0) resolve(); else failed(); });
@@ -204,7 +260,7 @@ function tokenSession(session, tokens) {
 export async function signIn(root, previous, dependencies = { openBrowser, jsonRequest, oauthMetadata }) {
   const path = join(root, 'session.json');
   const hostId = previous.hostId ?? 'urn:uuid:' + randomUUID();
-  if (!previous.hostId) writePrivate(path, { ...previous, hostId });
+  if (!previous.hostId) writeSession(path, { ...previous, hostId });
   const previousClient = previous.clientId;
   const state = randomBytes(32).toString('base64url');
   const nonce = randomBytes(32).toString('base64url');
@@ -230,11 +286,15 @@ export async function signIn(root, previous, dependencies = { openBrowser, jsonR
     requireCondition(!previousClient || previous.subject === identity.subject,
       'ACCOUNT_CHANGED', 'The returned ChatGPT account does not match the saved account.');
     const session = tokenSession({ ...identity, hostId, clientId, idToken: tokens.id_token }, tokens);
-    writePrivate(path, session);
+    writeSession(path, session);
     return status(session);
   } finally {
     callback.close();
   }
+}
+
+function registration({ hostId, clientId, subject, email }) {
+  return { hostId, clientId, subject, email };
 }
 
 export async function signOut(root, session, dependencies = { oauthMetadata, request }) {
@@ -255,20 +315,25 @@ export async function signOut(root, session, dependencies = { oauthMetadata, req
       }
     }
   }
-  const { hostId, clientId, subject, email } = session;
-  const cleared = { hostId, clientId, subject, email };
-  writePrivate(join(root, 'session.json'), cleared);
+  const cleared = registration(session);
+  writeSession(join(root, 'session.json'), cleared);
   return { ...status(cleared), revoked };
 }
 
 export async function accessToken(root, session, exchange = jsonRequest) {
   requireCondition(status(session).connected, 'SIGN_IN_REQUIRED', 'Continue with ChatGPT to enable planning.');
   if (session.expiresAt > Date.now() + 60_000) return session.accessToken;
-  const tokens = await exchange(TOKEN, formPost({
-    grant_type: 'refresh_token', client_id: session.clientId, refresh_token: session.refreshToken, resource: RESOURCE,
-  }), true);
+  let tokens;
+  try {
+    tokens = await exchange(TOKEN, formPost({
+      grant_type: 'refresh_token', client_id: session.clientId, refresh_token: session.refreshToken, resource: RESOURCE,
+    }), true);
+  } catch (error) {
+    if (error.code === 'SESSION_EXPIRED') writeSession(join(root, 'session.json'), registration(session));
+    throw error;
+  }
   const refreshed = tokenSession(session, tokens);
-  writePrivate(join(root, 'session.json'), refreshed);
+  writeSession(join(root, 'session.json'), refreshed);
   return refreshed.accessToken;
 }
 
@@ -284,6 +349,7 @@ export async function readResponse(stream) {
   let pending = '';
   let output = '';
   let eventData = [];
+  let eventSize = 0;
   for await (const chunk of stream) {
     pending += decoder.decode(chunk, { stream: true });
     requireCondition(pending.length < MAX_FRAME, 'RESPONSE_TOO_LARGE', 'The model response was too large.');
@@ -291,10 +357,15 @@ export async function readResponse(stream) {
     while ((next = pending.indexOf('\n')) >= 0) {
       const line = pending.slice(0, next).replace(/\r$/, '');
       pending = pending.slice(next + 1);
-      if (line.startsWith('data:')) eventData.push(line.slice(5).trimStart());
+      if (line.startsWith('data:')) {
+        eventSize += line.length;
+        requireCondition(eventSize < MAX_FRAME, 'RESPONSE_TOO_LARGE', 'The model response was too large.');
+        eventData.push(line.slice(5).trimStart());
+      }
       if (line !== '' || eventData.length === 0) continue;
       const data = eventData.join('\n');
       eventData = [];
+      eventSize = 0;
       if (data === '[DONE]') continue;
       const event = JSON.parse(data);
       if (event.type === 'response.output_text.delta' && typeof event.delta === 'string') output += event.delta;
@@ -302,8 +373,14 @@ export async function readResponse(stream) {
       if (event.type === 'response.completed') return { text: output };
       if (['response.failed', 'response.incomplete', 'error'].includes(event.type)) {
         const code = event.response?.error?.code ?? event.code;
-        if (code === 'subscription_sharing_usage_limit_exceeded' || code === 'subscription_sharing_usage_unavailable') {
-          throw new AgentError('USAGE_LIMIT', 'ChatGPT plan usage is unavailable or its limit was reached. Check ChatGPT Settings.');
+        if (code === 'subscription_sharing_usage_limit_exceeded') {
+          throw new AgentError('USAGE_LIMIT', 'ChatGPT plan usage limit reached. Check ChatGPT Settings.');
+        }
+        if (code === 'subscription_sharing_usage_unavailable' || code === 'subscription_sharing_user_unavailable') {
+          throw new AgentError('PROVIDER_UNAVAILABLE', 'ChatGPT plan usage is temporarily unavailable. Try again later.');
+        }
+        if (code === 'subscription_sharing_user_not_eligible' || code === 'chatpass_v2_scope_not_authorized') {
+          throw new AgentError('PROVIDER_FORBIDDEN', 'OpenAI denied access. Check ChatGPT plan eligibility and workspace policy.');
         }
         throw new AgentError('INCOMPLETE_RESPONSE', 'The model did not complete the plan.');
       }
@@ -312,19 +389,38 @@ export async function readResponse(stream) {
   throw new AgentError('INCOMPLETE_RESPONSE', 'The model stream ended before the plan completed.');
 }
 
-async function plan(token, { prompt, model }) {
+function validatePlan({ prompt, model }) {
   requireCondition(typeof prompt === 'string' && nonempty(prompt.trim()) && prompt.length <= 50_000 &&
     typeof model === 'string' && /^[A-Za-z0-9._-]{1,100}$/.test(model), 'INVALID_REQUEST', 'Provide a prompt and select a model.');
-  const response = await request(RESOURCE + '/responses', {
+}
+
+function reviewedAttachments(attachments) {
+  try {
+    return validateAgentAttachments(attachments);
+  } catch (error) {
+    throw new AgentError('INVALID_ATTACHMENT', error.message);
+  }
+}
+
+export async function plan(token, { prompt, model, attachments }, send = request) {
+  validatePlan({ prompt, model });
+  const files = reviewedAttachments(attachments);
+  const content = files.length ? [{ type: 'input_text', text: prompt }, ...files.map(file => {
+    const data = `data:${file.mimeType};base64,${file.base64}`;
+    return file.mimeType === 'application/pdf'
+      ? { type: 'input_file', filename: file.name, file_data: data }
+      : { type: 'input_image', image_url: data };
+  })] : prompt;
+  const response = await send(RESOURCE + '/responses', {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, input: [{ role: 'user', content: prompt }], store: false, stream: true }),
+    body: JSON.stringify({ model, input: [{ role: 'user', content }], store: false, stream: true }),
   });
   if (!response.ok) throw responseError(response.status);
   return readResponse(response.body);
 }
 
-async function dispatch({ command, args = {} }, root) {
+export async function dispatch({ command, args = {} }, root) {
   requireCondition(args !== null && typeof args === 'object' && !Array.isArray(args), 'INVALID_REQUEST', 'Expected agent arguments.');
   const session = readState(root);
   if (command === 'status') return status(session);
@@ -339,13 +435,18 @@ const readLength = endianness() === 'LE' ? 'readUInt32LE' : 'readUInt32BE';
 const writeLength = endianness() === 'LE' ? 'writeUInt32LE' : 'writeUInt32BE';
 
 async function nativeRequest() {
-  let frame = Buffer.alloc(0);
+  const chunks = [];
+  let length = 0;
+  let size;
   for await (const chunk of process.stdin) {
-    frame = Buffer.concat([frame, chunk]);
-    if (frame.length < 4) continue;
-    const size = frame[readLength]();
-    requireCondition(size > 0 && size <= MAX_FRAME, 'INVALID_REQUEST', 'Invalid agent message size.');
-    if (frame.length >= size + 4) return JSON.parse(frame.subarray(4, size + 4));
+    chunks.push(chunk);
+    length += chunk.length;
+    if (size === undefined && length >= 4) {
+      const header = chunks[0].length >= 4 ? chunks[0] : Buffer.concat(chunks, length);
+      size = header[readLength]();
+      requireCondition(size > 0 && size <= MAX_REQUEST_FRAME, 'INVALID_REQUEST', 'Invalid agent message size.');
+    }
+    if (length >= size + 4) return JSON.parse(Buffer.concat(chunks, length).subarray(4, size + 4));
   }
   throw new AgentError('INVALID_REQUEST', 'Incomplete agent request.');
 }
@@ -360,7 +461,7 @@ function nativeReply(reply) {
   process.stdout.write(Buffer.concat([header, body]));
 }
 
-function asError(error) {
+export function asError(error) {
   return error instanceof AgentError ? { code: error.code, message: error.message } :
     { code: 'AGENT_ERROR', message: 'Browser Recipes could not complete the agent request.' };
 }

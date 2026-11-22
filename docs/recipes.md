@@ -23,6 +23,7 @@ A recipe contains an `id`, `title`, ordered `steps` and optionally `inputs`. Ide
 | Operation | Fields in addition to `op` | Effect |
 | --- | --- | --- |
 | `navigate` | `path` | Navigate the selected tab to a same-origin absolute path. |
+| `followLink` | `target`, `match` | Navigate the selected tab to a uniquely matched rendered link. The destination must stay within the adapter’s declared paths. |
 | `readValue` | `target`, `as` | Read a visible read-only text control. Credential controls are excluded. |
 | `assertValue` | `target`, either `input` or `value` | Verify that a supported control has the exact expected string value. |
 | `assertValues` | `target`, `input` | Verify the exact values of visible controls in document order. The string input contains a JSON array of strings. |
@@ -35,7 +36,7 @@ A recipe contains an `id`, `title`, ordered `steps` and optionally `inputs`. Ide
 | `readAttachment` | `target`, `allowedPathPrefix`, `as` | Fetch the target link in the tab's session. The prefix must appear in `documentPaths`. |
 | `attach` | `target`, `input` | Set a file input from a JSON object with `name`, `mimeType` and `base64` (up to 384 KiB of input bytes). |
 
-A step that takes `target` can instead supply a CSS `selector` directly. Every step resolves its selector against the current top-level document. A missing or ambiguous single-element target stops the run. Most operations require a visible element. After a write, read back the saved value to check that the app accepted it.
+A step that takes `target` can instead supply a CSS `selector` directly. Every step resolves its selector inside the adapter’s scoped document. A missing or ambiguous single-element target stops the run. Most operations require a visible element. After a write, read back the saved value to check that the app accepted it.
 
 `readList` returns up to 500 visible rows, each with rendered text and the requested public attributes when present. Supported attributes are `aria-label`, `aria-checked`, `aria-selected`, `aria-expanded`, `data-eventid`, `data-calitemid`, `data-datekey`, `label`, and `checked`. The `label` attribute returns the associated form label or explicit ARIA label. For a checkbox, `checked` reports its current state as `"true"` or `"false"`. Use `text` for a case-insensitive substring match and `waitMs` (up to 8000) to wait for a result. An empty list can be legitimate. Add an `assert` on a control unique to the starting view when a recipe needs to distinguish an empty result from the wrong page.
 
@@ -57,3 +58,32 @@ Declare a directory with a trailing slash, as in `"documentPaths":["/files/"]`. 
 ## Repair a failed recipe
 
 Keep the CLI error and the catalog commit you ran. With developer tools enabled, `dev.failures` lists recent failures. Find the reported step in the recipe, inspect its target with `dev.inspect`, and test the change with `dev.test`. Save the corrected recipe in the adapter’s `recipes/` directory. If you changed a shared selector, rerun every recipe that uses it.
+
+## Account checks, paths and embedded apps
+
+An adapter can declare `paths`, an array of exact paths or directory prefixes ending in a slash. A framed app also declares `frame` with its own `origin` and `paths`. The user grants both origins in Settings. Each operation resolves exactly one matching direct child frame in the selected tab. A duplicate frame or a changed document stops the run. Use same-origin page controls for navigation within a frame.
+
+Set `identity` to a unique account control outside page content, for example `{"selector":"header [data-account]","attribute":"aria-label"}`. Set the expected identifier in Settings before the first run, or let the first run remember its displayed value. Later steps check the visible control again before using the page. The user can forget that binding under Site access. A display name shared by several users is insufficient evidence for an account-specific adapter.
+
+For an app whose route includes an account index, a navigation step may specify `under`. For example, `{"op":"navigate","under":"/calendar/u/","path":"/r/settings/export"}` preserves the selected tab’s existing account segment. A missing or invalid segment stops navigation.
+
+## Widget input
+
+By default, `fill` sets the native control value and dispatches input and change. A widget that commits on Enter or focus-leave can declare `"commit":"enter"` or `"commit":"focusout"`. Controls that listen for a tap can declare `"gesture":"tap"` on a click. These events run inside the selected document. They do not move the desktop cursor or give the tab focus. Use `assertValue` or a saved-record read to verify the application accepted the change.
+
+For accounts whose identifier is visible only in a flyout, `identity.reveal` declares a unique trigger and panel selector. The site must allow control clicks to reveal the account. The runtime reads the identity while the panel is visible and dismisses a panel it opened. `format: "email"` requires an email-shaped identifier.
+
+Use `minRows: 1` with a bounded `waitMs` on a `readList` receipt step to report a missing receipt as a failure. Inspect the receipt for partial success or an application error.
+
+
+### Query prefills and exact editor paths
+
+A `navigate` step can declare a `query` object mapping fixed parameter names
+to string inputs. The runtime URL-encodes the values and preserves its regular
+origin and path checks. The same-account navigation form keeps the current
+account segment before appending the declared path.
+
+A step that addresses a DOM target can set `at: {"path":"/exact/page"}`.
+Add `"under":"/account/"` to match the exact route below the current
+account segment. The runtime checks that path in the target document. Use this
+on a save control shared by new-item and existing-item editors.

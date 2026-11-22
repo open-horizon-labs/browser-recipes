@@ -1,0 +1,1365 @@
+[
+  {
+    "id": "fake-zcal",
+    "title": "ZCAL appointment fixture",
+    "origin": "http://127.0.0.1:8790",
+    "paths": [
+      "/index.html"
+    ],
+    "identity": {
+      "selector": "#sb-user"
+    },
+    "backgroundOnly": true,
+    "targets": {
+      "available": "body:has(#sysmsg[hidden]):has(#busy[hidden]):has(#dlg-create[hidden]) #btn-create",
+      "startup": "#sysmsg:not([hidden]) #sysmsg-ok",
+      "form": "#dlg-create:not([hidden])",
+      "basic": "#tab-basic",
+      "additional": "#tab-add",
+      "calendar": "#f-calendar",
+      "main-option": "#f-calendar-list:not([hidden]) [data-code=\"ZMAIN\"]",
+      "main-selected": "#f-calendar[data-value=\"ZMAIN\"]",
+      "all-day": "#f-allday[aria-checked=\"false\"]",
+      "all-day-selected": "#f-allday[aria-checked=\"true\"]",
+      "check": "#dlg-check",
+      "subject": "#f-subject",
+      "date": "#f-date",
+      "start": "#f-from",
+      "end": "#f-to",
+      "organizer": "#f-organizer",
+      "location": "#f-location",
+      "status": "#sb-msg",
+      "save": "#dlg-save",
+      "confirm": "#dlg-confirm:not([hidden]) #cf-yes",
+      "closed": "body:has(#dlg-create[hidden]):has(#busy[hidden]) #titlebar",
+      "rows": "#alv tbody tr",
+      "list-ready": "body:has(#busy[hidden]):has(#sb-user:not(:empty)) #alv"
+    },
+    "recipes": [
+      {
+        "id": "acknowledge-startup",
+        "title": "Acknowledge the fixture system message",
+        "steps": [
+          {
+            "op": "click",
+            "target": "startup"
+          }
+        ]
+      },
+      {
+        "id": "read-appointments",
+        "title": "Read the appointment register",
+        "steps": [
+          {
+            "op": "assert",
+            "target": "list-ready"
+          },
+          {
+            "op": "readList",
+            "target": "rows",
+            "as": "appointments"
+          }
+        ]
+      },
+      {
+        "id": "stage-timed",
+        "title": "Check a timed fixture appointment",
+        "inputs": {
+          "subject": {
+            "type": "string",
+            "required": true
+          },
+          "date": {
+            "type": "string",
+            "required": true
+          },
+          "start": {
+            "type": "string",
+            "required": true
+          },
+          "end": {
+            "type": "string",
+            "required": true
+          },
+          "organizer": {
+            "type": "string",
+            "required": true
+          },
+          "location": {
+            "type": "string",
+            "required": true
+          }
+        },
+        "steps": [
+          {
+            "op": "click",
+            "target": "available"
+          },
+          {
+            "op": "assert",
+            "target": "form"
+          },
+          {
+            "op": "fill",
+            "target": "subject",
+            "input": "subject"
+          },
+          {
+            "op": "click",
+            "target": "calendar"
+          },
+          {
+            "op": "click",
+            "target": "main-option"
+          },
+          {
+            "op": "assert",
+            "target": "main-selected"
+          },
+          {
+            "op": "fill",
+            "target": "date",
+            "input": "date"
+          },
+          {
+            "op": "fill",
+            "target": "start",
+            "input": "start"
+          },
+          {
+            "op": "fill",
+            "target": "end",
+            "input": "end"
+          },
+          {
+            "op": "click",
+            "target": "additional"
+          },
+          {
+            "op": "fill",
+            "target": "organizer",
+            "input": "organizer"
+          },
+          {
+            "op": "fill",
+            "target": "location",
+            "input": "location"
+          },
+          {
+            "op": "click",
+            "target": "check"
+          },
+          {
+            "op": "assert",
+            "target": "status",
+            "text": "No errors found"
+          },
+          {
+            "op": "read",
+            "target": "status",
+            "as": "check"
+          }
+        ]
+      },
+      {
+        "id": "save-timed",
+        "title": "Save a checked timed fixture appointment",
+        "inputs": {
+          "subject": {
+            "type": "string",
+            "required": true
+          },
+          "date": {
+            "type": "string",
+            "required": true
+          },
+          "start": {
+            "type": "string",
+            "required": true
+          },
+          "end": {
+            "type": "string",
+            "required": true
+          },
+          "organizer": {
+            "type": "string",
+            "required": true
+          },
+          "location": {
+            "type": "string",
+            "required": true
+          }
+        },
+        "steps": [
+          {
+            "op": "assert",
+            "target": "form"
+          },
+          {
+            "op": "click",
+            "target": "basic"
+          },
+          {
+            "op": "assert",
+            "target": "main-selected"
+          },
+          {
+            "op": "assertValue",
+            "target": "subject",
+            "input": "subject"
+          },
+          {
+            "op": "assertValue",
+            "target": "date",
+            "input": "date"
+          },
+          {
+            "op": "assert",
+            "target": "all-day"
+          },
+          {
+            "op": "assertValue",
+            "target": "start",
+            "input": "start"
+          },
+          {
+            "op": "assertValue",
+            "target": "end",
+            "input": "end"
+          },
+          {
+            "op": "click",
+            "target": "additional"
+          },
+          {
+            "op": "assertValue",
+            "target": "organizer",
+            "input": "organizer"
+          },
+          {
+            "op": "assertValue",
+            "target": "location",
+            "input": "location"
+          },
+          {
+            "op": "click",
+            "target": "check"
+          },
+          {
+            "op": "assert",
+            "target": "status",
+            "text": "No errors found"
+          },
+          {
+            "op": "click",
+            "target": "save"
+          },
+          {
+            "op": "click",
+            "target": "confirm"
+          },
+          {
+            "op": "assert",
+            "target": "closed"
+          },
+          {
+            "op": "assert",
+            "target": "status",
+            "text": "created"
+          },
+          {
+            "op": "read",
+            "target": "status",
+            "as": "receipt"
+          }
+        ]
+      },
+      {
+        "id": "stage-all-day",
+        "title": "Check a all-day fixture appointment",
+        "inputs": {
+          "subject": {
+            "type": "string",
+            "required": true
+          },
+          "date": {
+            "type": "string",
+            "required": true
+          },
+          "organizer": {
+            "type": "string",
+            "required": true
+          },
+          "location": {
+            "type": "string",
+            "required": true
+          }
+        },
+        "steps": [
+          {
+            "op": "click",
+            "target": "available"
+          },
+          {
+            "op": "assert",
+            "target": "form"
+          },
+          {
+            "op": "fill",
+            "target": "subject",
+            "input": "subject"
+          },
+          {
+            "op": "click",
+            "target": "calendar"
+          },
+          {
+            "op": "click",
+            "target": "main-option"
+          },
+          {
+            "op": "assert",
+            "target": "main-selected"
+          },
+          {
+            "op": "fill",
+            "target": "date",
+            "input": "date"
+          },
+          {
+            "op": "click",
+            "target": "all-day"
+          },
+          {
+            "op": "assert",
+            "target": "all-day-selected"
+          },
+          {
+            "op": "click",
+            "target": "additional"
+          },
+          {
+            "op": "fill",
+            "target": "organizer",
+            "input": "organizer"
+          },
+          {
+            "op": "fill",
+            "target": "location",
+            "input": "location"
+          },
+          {
+            "op": "click",
+            "target": "check"
+          },
+          {
+            "op": "assert",
+            "target": "status",
+            "text": "No errors found"
+          },
+          {
+            "op": "read",
+            "target": "status",
+            "as": "check"
+          }
+        ]
+      },
+      {
+        "id": "save-all-day",
+        "title": "Save a checked all-day fixture appointment",
+        "inputs": {
+          "subject": {
+            "type": "string",
+            "required": true
+          },
+          "date": {
+            "type": "string",
+            "required": true
+          },
+          "organizer": {
+            "type": "string",
+            "required": true
+          },
+          "location": {
+            "type": "string",
+            "required": true
+          }
+        },
+        "steps": [
+          {
+            "op": "assert",
+            "target": "form"
+          },
+          {
+            "op": "click",
+            "target": "basic"
+          },
+          {
+            "op": "assert",
+            "target": "main-selected"
+          },
+          {
+            "op": "assertValue",
+            "target": "subject",
+            "input": "subject"
+          },
+          {
+            "op": "assertValue",
+            "target": "date",
+            "input": "date"
+          },
+          {
+            "op": "assert",
+            "target": "all-day-selected"
+          },
+          {
+            "op": "click",
+            "target": "additional"
+          },
+          {
+            "op": "assertValue",
+            "target": "organizer",
+            "input": "organizer"
+          },
+          {
+            "op": "assertValue",
+            "target": "location",
+            "input": "location"
+          },
+          {
+            "op": "click",
+            "target": "check"
+          },
+          {
+            "op": "assert",
+            "target": "status",
+            "text": "No errors found"
+          },
+          {
+            "op": "click",
+            "target": "save"
+          },
+          {
+            "op": "click",
+            "target": "confirm"
+          },
+          {
+            "op": "assert",
+            "target": "closed"
+          },
+          {
+            "op": "assert",
+            "target": "status",
+            "text": "created"
+          },
+          {
+            "op": "read",
+            "target": "status",
+            "as": "receipt"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "fake-invoice",
+    "title": "Invoice form fixture",
+    "origin": "http://127.0.0.1:8790",
+    "paths": [
+      "/concur/index.html"
+    ],
+    "identity": {
+      "selector": "#account"
+    },
+    "backgroundOnly": true,
+    "targets": {
+      "available": "body:has(#dlg[hidden]):has(#busy[hidden]):has(#f-currency option:nth-child(2)) #btn-new",
+      "form": "#dlg:not([hidden]) #inv-form",
+      "check": "#dlg-check",
+      "check-message": "#dlg-msg",
+      "list-ready": "body:has(#busy[hidden]):has(#account:not(:empty)) #inv-list",
+      "rows": "#inv-list tbody tr",
+      "vendor": "#f-vendor",
+      "invoice-number": "#f-invoice-number",
+      "invoice-date": "#f-invoice-date",
+      "due-date": "#f-due-date",
+      "bill-to": "#f-bill-to",
+      "currency": "#f-currency",
+      "net": "#f-net",
+      "tax": "#f-tax",
+      "total": "#f-total",
+      "po": "#f-po",
+      "terms": "#f-terms",
+      "commit": "#dlg-save",
+      "receipt": "#msg[data-type=\"success\"]"
+    },
+    "recipes": [
+      {
+        "id": "stage-invoice",
+        "title": "Fill and check the invoice for manual save",
+        "inputs": {
+          "vendor": {
+            "type": "string",
+            "required": true
+          },
+          "invoice-number": {
+            "type": "string",
+            "required": true
+          },
+          "invoice-date": {
+            "type": "string",
+            "required": true
+          },
+          "due-date": {
+            "type": "string",
+            "required": true
+          },
+          "bill-to": {
+            "type": "string",
+            "required": true
+          },
+          "currency": {
+            "type": "string",
+            "required": true
+          },
+          "net": {
+            "type": "string",
+            "required": true
+          },
+          "tax": {
+            "type": "string",
+            "required": true
+          },
+          "total": {
+            "type": "string",
+            "required": true
+          },
+          "po": {
+            "type": "string",
+            "required": true
+          },
+          "terms": {
+            "type": "string",
+            "required": true
+          }
+        },
+        "steps": [
+          {
+            "op": "click",
+            "target": "available"
+          },
+          {
+            "op": "assert",
+            "target": "form"
+          },
+          {
+            "op": "fill",
+            "target": "vendor",
+            "input": "vendor"
+          },
+          {
+            "op": "fill",
+            "target": "invoice-number",
+            "input": "invoice-number"
+          },
+          {
+            "op": "fill",
+            "target": "invoice-date",
+            "input": "invoice-date"
+          },
+          {
+            "op": "fill",
+            "target": "due-date",
+            "input": "due-date"
+          },
+          {
+            "op": "fill",
+            "target": "bill-to",
+            "input": "bill-to"
+          },
+          {
+            "op": "fill",
+            "target": "currency",
+            "input": "currency"
+          },
+          {
+            "op": "fill",
+            "target": "net",
+            "input": "net"
+          },
+          {
+            "op": "fill",
+            "target": "tax",
+            "input": "tax"
+          },
+          {
+            "op": "fill",
+            "target": "total",
+            "input": "total"
+          },
+          {
+            "op": "fill",
+            "target": "po",
+            "input": "po"
+          },
+          {
+            "op": "fill",
+            "target": "terms",
+            "input": "terms"
+          },
+          {
+            "op": "click",
+            "target": "check"
+          },
+          {
+            "op": "assert",
+            "target": "check-message",
+            "text": "No errors found"
+          },
+          {
+            "op": "read",
+            "target": "check-message",
+            "as": "check"
+          }
+        ]
+      },
+      {
+        "id": "save-invoice",
+        "title": "Save the checked fixture invoice",
+        "inputs": {
+          "vendor": {
+            "type": "string",
+            "required": true
+          },
+          "invoice-number": {
+            "type": "string",
+            "required": true
+          },
+          "invoice-date": {
+            "type": "string",
+            "required": true
+          },
+          "due-date": {
+            "type": "string",
+            "required": true
+          },
+          "bill-to": {
+            "type": "string",
+            "required": true
+          },
+          "currency": {
+            "type": "string",
+            "required": true
+          },
+          "net": {
+            "type": "string",
+            "required": true
+          },
+          "tax": {
+            "type": "string",
+            "required": true
+          },
+          "total": {
+            "type": "string",
+            "required": true
+          },
+          "po": {
+            "type": "string",
+            "required": true
+          },
+          "terms": {
+            "type": "string",
+            "required": true
+          }
+        },
+        "steps": [
+          {
+            "op": "assert",
+            "target": "form"
+          },
+          {
+            "op": "assertValue",
+            "target": "vendor",
+            "input": "vendor"
+          },
+          {
+            "op": "assertValue",
+            "target": "invoice-number",
+            "input": "invoice-number"
+          },
+          {
+            "op": "assertValue",
+            "target": "invoice-date",
+            "input": "invoice-date"
+          },
+          {
+            "op": "assertValue",
+            "target": "due-date",
+            "input": "due-date"
+          },
+          {
+            "op": "assertValue",
+            "target": "bill-to",
+            "input": "bill-to"
+          },
+          {
+            "op": "assertValue",
+            "target": "currency",
+            "input": "currency"
+          },
+          {
+            "op": "assertValue",
+            "target": "net",
+            "input": "net"
+          },
+          {
+            "op": "assertValue",
+            "target": "tax",
+            "input": "tax"
+          },
+          {
+            "op": "assertValue",
+            "target": "total",
+            "input": "total"
+          },
+          {
+            "op": "assertValue",
+            "target": "po",
+            "input": "po"
+          },
+          {
+            "op": "assertValue",
+            "target": "terms",
+            "input": "terms"
+          },
+          {
+            "op": "click",
+            "target": "check"
+          },
+          {
+            "op": "assert",
+            "target": "check-message",
+            "text": "No errors found"
+          },
+          {
+            "op": "click",
+            "target": "commit"
+          },
+          {
+            "op": "assert",
+            "target": "receipt",
+            "text": "saved."
+          },
+          {
+            "op": "read",
+            "target": "receipt",
+            "as": "receipt"
+          }
+        ]
+      },
+      {
+        "id": "read-invoices",
+        "title": "Read the saved invoice register",
+        "steps": [
+          {
+            "op": "assert",
+            "target": "list-ready"
+          },
+          {
+            "op": "readList",
+            "target": "rows",
+            "as": "invoices"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "fake-sapui5",
+    "title": "SAPUI5 appointment fixture",
+    "origin": "http://127.0.0.1:8790",
+    "identity": {
+      "selector": "#meAvatar",
+      "attribute": "title"
+    },
+    "paths": [
+      "/sapcal/"
+    ],
+    "backgroundOnly": true,
+    "targets": {
+      "startup": "#sysmsgBox.sapMDialogOpen button",
+      "available": "body:not(:has(#sysmsgBox.sapMDialogOpen)):not(:has(#dlgCreate.sapMDialogOpen)) #btnCreate",
+      "form": "#dlgCreate.sapMDialogOpen",
+      "calendar-help": "#fCalendar-vhi",
+      "main-option": "#calHelp-list [role=\"listitem\"]:has(.sapMSLITitle)",
+      "calendar": "#fCalendar-inner",
+      "subject": "#fSubject-inner",
+      "date": "#fDate-inner",
+      "start": "#fFrom-inner",
+      "end": "#fTo-inner",
+      "organizer": "#fOrganizer-inner",
+      "location": "#fLocation-inner",
+      "timed": "#fAllDay[aria-checked=\"false\"]",
+      "save": "#btnSave",
+      "confirm": "#confirmSave.sapMDialogOpen button",
+      "receipt": "#resultStrip",
+      "table": "#apptTable",
+      "rows": "#apptTable tr.sapMListTblRow"
+    },
+    "recipes": [
+      {
+        "id": "acknowledge-startup",
+        "title": "Acknowledge the SAPUI5 fixture message",
+        "steps": [
+          {
+            "op": "click",
+            "target": "startup",
+            "match": {
+              "text": "OK"
+            },
+            "gesture": "tap"
+          }
+        ]
+      },
+      {
+        "id": "read-appointments",
+        "title": "Read the SAPUI5 appointment register",
+        "steps": [
+          {
+            "op": "assert",
+            "target": "table"
+          },
+          {
+            "op": "readList",
+            "target": "rows",
+            "as": "appointments"
+          }
+        ]
+      },
+      {
+        "id": "stage-timed",
+        "title": "Fill a timed SAPUI5 appointment for review",
+        "inputs": {
+          "subject": {
+            "type": "string",
+            "required": true
+          },
+          "date": {
+            "type": "string",
+            "required": true
+          },
+          "start": {
+            "type": "string",
+            "required": true
+          },
+          "end": {
+            "type": "string",
+            "required": true
+          },
+          "organizer": {
+            "type": "string",
+            "required": true
+          },
+          "location": {
+            "type": "string",
+            "required": true
+          }
+        },
+        "steps": [
+          {
+            "op": "click",
+            "target": "available",
+            "gesture": "tap"
+          },
+          {
+            "op": "assert",
+            "target": "form"
+          },
+          {
+            "op": "assert",
+            "target": "timed"
+          },
+          {
+            "op": "click",
+            "target": "calendar-help",
+            "gesture": "tap"
+          },
+          {
+            "op": "click",
+            "target": "main-option",
+            "match": {
+              "text": "ZMAIN Main calendar"
+            },
+            "gesture": "tap"
+          },
+          {
+            "op": "assertValue",
+            "target": "calendar",
+            "value": "ZMAIN"
+          },
+          {
+            "op": "fill",
+            "target": "subject",
+            "input": "subject",
+            "commit": "focusout"
+          },
+          {
+            "op": "fill",
+            "target": "date",
+            "input": "date",
+            "commit": "enter"
+          },
+          {
+            "op": "fill",
+            "target": "start",
+            "input": "start",
+            "commit": "enter"
+          },
+          {
+            "op": "fill",
+            "target": "end",
+            "input": "end",
+            "commit": "enter"
+          },
+          {
+            "op": "fill",
+            "target": "organizer",
+            "input": "organizer",
+            "commit": "focusout"
+          },
+          {
+            "op": "fill",
+            "target": "location",
+            "input": "location",
+            "commit": "focusout"
+          },
+          {
+            "op": "assertValue",
+            "target": "subject",
+            "input": "subject"
+          },
+          {
+            "op": "assertValue",
+            "target": "date",
+            "input": "date"
+          },
+          {
+            "op": "assertValue",
+            "target": "start",
+            "input": "start"
+          },
+          {
+            "op": "assertValue",
+            "target": "end",
+            "input": "end"
+          },
+          {
+            "op": "assertValue",
+            "target": "organizer",
+            "input": "organizer"
+          },
+          {
+            "op": "assertValue",
+            "target": "location",
+            "input": "location"
+          }
+        ]
+      },
+      {
+        "id": "save-timed",
+        "title": "Save a reviewed SAPUI5 fixture appointment",
+        "inputs": {
+          "subject": {
+            "type": "string",
+            "required": true
+          },
+          "date": {
+            "type": "string",
+            "required": true
+          },
+          "start": {
+            "type": "string",
+            "required": true
+          },
+          "end": {
+            "type": "string",
+            "required": true
+          },
+          "organizer": {
+            "type": "string",
+            "required": true
+          },
+          "location": {
+            "type": "string",
+            "required": true
+          }
+        },
+        "steps": [
+          {
+            "op": "assert",
+            "target": "form"
+          },
+          {
+            "op": "assert",
+            "target": "timed"
+          },
+          {
+            "op": "assertValue",
+            "target": "calendar",
+            "value": "ZMAIN"
+          },
+          {
+            "op": "assertValue",
+            "target": "subject",
+            "input": "subject"
+          },
+          {
+            "op": "assertValue",
+            "target": "date",
+            "input": "date"
+          },
+          {
+            "op": "assertValue",
+            "target": "start",
+            "input": "start"
+          },
+          {
+            "op": "assertValue",
+            "target": "end",
+            "input": "end"
+          },
+          {
+            "op": "assertValue",
+            "target": "organizer",
+            "input": "organizer"
+          },
+          {
+            "op": "assertValue",
+            "target": "location",
+            "input": "location"
+          },
+          {
+            "op": "click",
+            "target": "save",
+            "gesture": "tap"
+          },
+          {
+            "op": "click",
+            "target": "confirm",
+            "match": {
+              "text": "OK"
+            },
+            "gesture": "tap"
+          },
+          {
+            "op": "assert",
+            "target": "receipt",
+            "text": "created"
+          },
+          {
+            "op": "read",
+            "target": "receipt",
+            "as": "receipt"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "fake-sapui5-frame",
+    "title": "SAPUI5 appointment fixture in launchpad",
+    "origin": "http://127.0.0.1:8790",
+    "identity": {
+      "selector": "#meAvatar",
+      "attribute": "title"
+    },
+    "paths": [
+      "/launchpad/"
+    ],
+    "backgroundOnly": true,
+    "targets": {
+      "startup": "#sysmsgBox.sapMDialogOpen button",
+      "available": "body:not(:has(#sysmsgBox.sapMDialogOpen)):not(:has(#dlgCreate.sapMDialogOpen)) #btnCreate",
+      "form": "#dlgCreate.sapMDialogOpen",
+      "calendar-help": "#fCalendar-vhi",
+      "main-option": "#calHelp-list [role=\"listitem\"]:has(.sapMSLITitle)",
+      "calendar": "#fCalendar-inner",
+      "subject": "#fSubject-inner",
+      "date": "#fDate-inner",
+      "start": "#fFrom-inner",
+      "end": "#fTo-inner",
+      "organizer": "#fOrganizer-inner",
+      "location": "#fLocation-inner",
+      "timed": "#fAllDay[aria-checked=\"false\"]",
+      "save": "#btnSave",
+      "confirm": "#confirmSave.sapMDialogOpen button",
+      "receipt": "#resultStrip",
+      "table": "#apptTable",
+      "rows": "#apptTable tr.sapMListTblRow"
+    },
+    "recipes": [
+      {
+        "id": "acknowledge-startup",
+        "title": "Acknowledge the SAPUI5 fixture message",
+        "steps": [
+          {
+            "op": "click",
+            "target": "startup",
+            "match": {
+              "text": "OK"
+            },
+            "gesture": "tap"
+          }
+        ]
+      },
+      {
+        "id": "read-appointments",
+        "title": "Read the SAPUI5 appointment register",
+        "steps": [
+          {
+            "op": "assert",
+            "target": "table"
+          },
+          {
+            "op": "readList",
+            "target": "rows",
+            "as": "appointments"
+          }
+        ]
+      },
+      {
+        "id": "stage-timed",
+        "title": "Fill a timed SAPUI5 appointment for review",
+        "inputs": {
+          "subject": {
+            "type": "string",
+            "required": true
+          },
+          "date": {
+            "type": "string",
+            "required": true
+          },
+          "start": {
+            "type": "string",
+            "required": true
+          },
+          "end": {
+            "type": "string",
+            "required": true
+          },
+          "organizer": {
+            "type": "string",
+            "required": true
+          },
+          "location": {
+            "type": "string",
+            "required": true
+          }
+        },
+        "steps": [
+          {
+            "op": "click",
+            "target": "available",
+            "gesture": "tap"
+          },
+          {
+            "op": "assert",
+            "target": "form"
+          },
+          {
+            "op": "assert",
+            "target": "timed"
+          },
+          {
+            "op": "click",
+            "target": "calendar-help",
+            "gesture": "tap"
+          },
+          {
+            "op": "click",
+            "target": "main-option",
+            "match": {
+              "text": "ZMAIN Main calendar"
+            },
+            "gesture": "tap"
+          },
+          {
+            "op": "assertValue",
+            "target": "calendar",
+            "value": "ZMAIN"
+          },
+          {
+            "op": "fill",
+            "target": "subject",
+            "input": "subject",
+            "commit": "focusout"
+          },
+          {
+            "op": "fill",
+            "target": "date",
+            "input": "date",
+            "commit": "enter"
+          },
+          {
+            "op": "fill",
+            "target": "start",
+            "input": "start",
+            "commit": "enter"
+          },
+          {
+            "op": "fill",
+            "target": "end",
+            "input": "end",
+            "commit": "enter"
+          },
+          {
+            "op": "fill",
+            "target": "organizer",
+            "input": "organizer",
+            "commit": "focusout"
+          },
+          {
+            "op": "fill",
+            "target": "location",
+            "input": "location",
+            "commit": "focusout"
+          },
+          {
+            "op": "assertValue",
+            "target": "subject",
+            "input": "subject"
+          },
+          {
+            "op": "assertValue",
+            "target": "date",
+            "input": "date"
+          },
+          {
+            "op": "assertValue",
+            "target": "start",
+            "input": "start"
+          },
+          {
+            "op": "assertValue",
+            "target": "end",
+            "input": "end"
+          },
+          {
+            "op": "assertValue",
+            "target": "organizer",
+            "input": "organizer"
+          },
+          {
+            "op": "assertValue",
+            "target": "location",
+            "input": "location"
+          }
+        ]
+      },
+      {
+        "id": "save-timed",
+        "title": "Save a reviewed SAPUI5 fixture appointment",
+        "inputs": {
+          "subject": {
+            "type": "string",
+            "required": true
+          },
+          "date": {
+            "type": "string",
+            "required": true
+          },
+          "start": {
+            "type": "string",
+            "required": true
+          },
+          "end": {
+            "type": "string",
+            "required": true
+          },
+          "organizer": {
+            "type": "string",
+            "required": true
+          },
+          "location": {
+            "type": "string",
+            "required": true
+          }
+        },
+        "steps": [
+          {
+            "op": "assert",
+            "target": "form"
+          },
+          {
+            "op": "assert",
+            "target": "timed"
+          },
+          {
+            "op": "assertValue",
+            "target": "calendar",
+            "value": "ZMAIN"
+          },
+          {
+            "op": "assertValue",
+            "target": "subject",
+            "input": "subject"
+          },
+          {
+            "op": "assertValue",
+            "target": "date",
+            "input": "date"
+          },
+          {
+            "op": "assertValue",
+            "target": "start",
+            "input": "start"
+          },
+          {
+            "op": "assertValue",
+            "target": "end",
+            "input": "end"
+          },
+          {
+            "op": "assertValue",
+            "target": "organizer",
+            "input": "organizer"
+          },
+          {
+            "op": "assertValue",
+            "target": "location",
+            "input": "location"
+          },
+          {
+            "op": "click",
+            "target": "save",
+            "gesture": "tap"
+          },
+          {
+            "op": "click",
+            "target": "confirm",
+            "match": {
+              "text": "OK"
+            },
+            "gesture": "tap"
+          },
+          {
+            "op": "assert",
+            "target": "receipt",
+            "text": "created"
+          },
+          {
+            "op": "read",
+            "target": "receipt",
+            "as": "receipt"
+          }
+        ]
+      }
+    ],
+    "frame": {
+      "origin": "http://localhost:8790",
+      "paths": [
+        "/sapcal/"
+      ]
+    }
+  }
+]

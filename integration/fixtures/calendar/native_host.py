@@ -16,19 +16,25 @@ def main():
     stage = pathlib.Path(__file__).parent
     with (stage / "native-requests.log").open("a") as log:
         print(command, file=log)
+    error = {"code": "TEST_REQUEST_REJECTED", "message": "The fixture rejected this request."}
     if command == "status":
         result = {"connected": not (stage / "disconnected").exists()}
     elif command == "models":
         result = {"models": [{"id": "fixture-model", "name": "Fixture model"}]}
     elif command == "plan":
         args = request["args"]
-        if args["model"] != "fixture-model" or "Reviewed workshop" not in args["prompt"] or "destination-1" not in args["prompt"]:
+        if args["model"] == "fixture-model" and "Check session recovery" in args["prompt"]:
+            result = None
+            error = {"code": "SESSION_EXPIRED", "message": "The ChatGPT session expired or was disconnected. Sign in again."}
+        elif args["model"] == "fixture-model" and "Which tab should I select?" in args["prompt"]:
+            result = {"text": json.dumps({"answer": "Choose the tab with the news page.", "actions": ["choose-tab"]})}
+        elif args["model"] != "fixture-model" or "Reviewed workshop" not in args["prompt"] or "destination-1" not in args["prompt"]:
             result = None
         else:
             result = {"text": (stage / "normalized.json").read_text()}
     else:
         result = None
-    reply = {"result": result} if result is not None else {"error": {"code": "TEST_REQUEST_REJECTED"}}
+    reply = {"result": result} if result is not None else {"error": error}
     raw = json.dumps(reply).encode("utf-8")
     sys.stdout.buffer.write(struct.pack("=I", len(raw)) + raw)
     sys.stdout.buffer.flush()

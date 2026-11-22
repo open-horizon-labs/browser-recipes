@@ -13,7 +13,7 @@
       <header class="runner-header">
         <h1>Browser Recipes</h1>
         <nav aria-label="Browser Recipes">
-          <a href="agent.html" target="_blank" rel="noopener">Calendar sync</a>
+          <a href="agent.html" target="_blank" rel="noopener">Workflows</a>
           <a href="options.html" target="_blank" rel="noopener">Settings</a>
         </nav>
       </header>
@@ -38,6 +38,12 @@
       </form>
       <p id="runner-status" class="status" role="status">Loading available tabs and recipes…</p>
       <details id="failure" hidden><summary>Failure details for recipe author</summary><textarea readonly rows="9" aria-label="Failure details"></textarea></details>
+      <details id="evidence" hidden>
+        <summary>Developer evidence</summary>
+        <p>Select the active site tab to capture its visible page.</p>
+        <button id="capture" type="button" disabled>Capture selected tab</button>
+        <div id="capture-output"></div>
+      </details>
       <section id="results" aria-labelledby="results-heading" hidden>
         <h2 id="results-heading">Results</h2>
         <div id="output"></div>

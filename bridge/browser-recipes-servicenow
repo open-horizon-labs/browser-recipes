@@ -1,0 +1,16 @@
+#!/usr/bin/env node
+import { installServiceNowHost, runServiceNowHost } from './servicenow.mjs';
+
+try {
+  const [, , command, id, flag, browser] = process.argv;
+  if (/^chrome-extension:\/\/[a-p]{32}\/$/.test(command || '')) {
+    await runServiceNowHost(process.stdin, process.stdout);
+  } else if (command === 'install' && id && (!flag || flag === '--browser' && browser)) {
+    console.log(await installServiceNowHost(id, browser));
+  } else {
+    throw new Error('Usage: browser-recipes-servicenow install EXTENSION_ID [--browser chrome|chromium|browseros-neo]');
+  }
+} catch {
+  console.error('Could not run the ServiceNow source. Check the registration command and private configuration.');
+  process.exitCode = 1;
+}

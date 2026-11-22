@@ -8,6 +8,9 @@ const runButton = document.querySelector('#run');
 const status = document.querySelector('#runner-status');
 const results = document.querySelector('#results');
 const output = document.querySelector('#output');
+const evidence = document.querySelector('#evidence');
+const capture = document.querySelector('#capture');
+const captureOutput = document.querySelector('#capture-output');
 
 let catalog = [];
 let tabs = [];
@@ -99,6 +102,7 @@ function updateRecipes() {
     recipePicker.append(group);
   }
   recipePicker.disabled = !recipes.length;
+  capture.disabled = !tab;
   if (recipes.some(recipe => recipe.key === previous)) recipePicker.value = previous;
   updateInputs();
   if (!tab) choose(tabs.length ? 'Select the tab you want the recipe to use.' : 'No eligible tabs are open. Open a tab for an approved site and refresh.');
@@ -214,3 +218,35 @@ recipePicker.addEventListener('change', () => {
 });
 refreshButton.addEventListener('click', () => void refresh());
 void refresh();
+
+async function captureTab() {
+  const tab = tabs.find(item => String(item.tabId) === tabPicker.value);
+  if (!tab) return;
+  const recipe = recipes.find(item => item.key === recipePicker.value);
+  capture.disabled = true;
+  captureOutput.replaceChildren();
+  choose('Capturing the active site tab…');
+  try {
+    const { dataUrl } = await request('dev.capture', { tabId: tab.tabId, adapterId: recipe?.adapterId ?? tab.adapterIds[0] });
+    if (String(tab.tabId) !== tabPicker.value || evidence.hidden) return;
+    if (!/^data:image\/jpeg;base64,/.test(dataUrl)) throw new Error('The browser returned an unsupported image.');
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = 'browser-recipe-evidence.jpg';
+    link.textContent = 'Download capture';
+    captureOutput.append(link);
+    choose('Capture ready.');
+  } catch (error) {
+    choose(error.message, true);
+  } finally {
+    capture.disabled = !tabPicker.value;
+  }
+}
+
+capture.addEventListener('click', () => void captureTab());
+void chrome.storage.local.get('devMode').then(({ devMode }) => { evidence.hidden = devMode !== true; });
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local' || !changes.devMode) return;
+  evidence.hidden = changes.devMode.newValue !== true;
+  if (evidence.hidden) captureOutput.replaceChildren();
+});

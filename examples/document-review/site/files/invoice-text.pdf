@@ -1,0 +1,43 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length 637 >>
+stream
+BT /F1 27 Tf 62 720 Td (Invoice) Tj ET
+BT /F1 14 Tf 62 689 Td (Vendor: Example Lighting Cooperative) Tj ET
+BT /F1 14 Tf 62 658 Td (Bill to: Sample Workshop Lab) Tj ET
+BT /F1 14 Tf 62 627 Td (Invoice number: INV-1042) Tj ET
+BT /F1 14 Tf 62 596 Td (Invoice date: 2026-11-10) Tj ET
+BT /F1 14 Tf 62 565 Td (Due date: 2026-12-10) Tj ET
+BT /F1 14 Tf 62 534 Td (Purchase order: PO-0224) Tj ET
+BT /F1 14 Tf 62 503 Td (Currency: USD) Tj ET
+BT /F1 14 Tf 62 472 Td (Service: Workshop lamp replacement) Tj ET
+BT /F1 14 Tf 62 441 Td (Subtotal: 125.00) Tj ET
+BT /F1 14 Tf 62 410 Td (Tax: 10.00) Tj ET
+BT /F1 14 Tf 62 379 Td (Grand total: 135.00) Tj ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000311 00000 n 
+trailer
+<< /Root 1 0 R /Size 6 >>
+startxref
+999
+%%EOF

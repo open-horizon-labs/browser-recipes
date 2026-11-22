@@ -16,8 +16,8 @@
         <ul id="origins"></ul>
       </section>
       <section aria-labelledby="catalog-heading">
-        <h2 id="catalog-heading">Installed adapters</h2>
-        <label for="catalog">Local adapter catalog (JSON array)</label>
+        <h2 id="catalog-heading">Installed adapters and workflows</h2>
+        <label for="catalog">Local catalog (JSON)</label>
         <textarea id="catalog" rows="11" spellcheck="false"></textarea>
         <div class="actions">
           <label for="catalog-file">Load a JSON file into the editor
@@ -26,10 +26,28 @@
           <button type="button" id="save">Save catalog</button>
         </div>
       </section>
+      <section aria-labelledby="sources-heading">
+        <h2 id="sources-heading">Local data sources</h2>
+        <p>Enable a source only after configuring its read-only host. Credentials stay in the host configuration. Sharing source data in a model prompt is a separate choice.</p>
+        <ul id="sources"></ul>
+      </section>
       <section aria-labelledby="bridge-heading">
         <h2 id="bridge-heading">Local CLI bridge</h2>
         <label><input id="bridge" type="checkbox"> Enable native messaging bridge</label>
         <p id="bridge-status" role="status"></p>
+      </section>
+      <section aria-labelledby="companion-heading">
+        <h2 id="companion-heading">Pair a local ChatGPT helper</h2>
+        <p>On macOS or Windows, start the helper on this computer and enter its pairing code. Once paired, Browser Recipes uses this helper for ChatGPT requests.</p>
+        <form id="companion-form">
+          <label for="companion-code">Pairing code</label>
+          <input id="companion-code" type="password" autocomplete="off" required>
+          <div class="actions">
+            <button id="companion-save" type="submit">Pair local helper</button>
+            <button id="companion-remove" type="button">Remove pairing</button>
+          </div>
+        </form>
+        <p id="companion-status" role="status"></p>
       </section>
       <section aria-labelledby="dev-heading">
         <h2 id="dev-heading">Developer tools</h2>

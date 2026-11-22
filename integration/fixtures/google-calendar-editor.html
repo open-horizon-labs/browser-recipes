@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Google Calendar editor fixture</title>
+<header><a href="#" role="button" aria-label="Google Account: Fixture calendar">Fixture calendar</a></header>
+<main role="main"></main>
+<template id="editor">
+  <label>Title <input id="xTiIn"></label>
+  <label>Start date <input id="xStDaIn"></label>
+  <label>Start time <input id="xStTiIn"></label>
+  <label>End time <input id="xEnTiIn"></label>
+  <label>End date <input id="xEnDaIn"></label>
+  <label id="xAlDaCbx">All day <input type="checkbox"></label>
+  <label>Location <input aria-label="Add location"></label>
+  <button id="xSaveBu">Save</button>
+</template>
+<script>
+const main = document.querySelector('main');
+const key = 'fixture-calendar-events';
+const events = JSON.parse(sessionStorage.getItem(key) || '[]');
+const params = new URLSearchParams(location.search);
+if (params.has('wrong-account')) {
+  document.querySelector('header a').setAttribute('aria-label', 'Google Account: Another calendar');
+}
+if (location.pathname.includes('/eventedit')) {
+  main.append(document.querySelector('#editor').content.cloneNode(true));
+  const [start, end] = (params.get('dates') || '').split('/');
+  const allDay = start?.length === 8;
+  const date = value => {
+    const day = new Date(Date.UTC(Number(value.slice(0, 4)), Number(value.slice(4, 6)) - 1, Number(value.slice(6, 8))));
+    if (allDay && value === end) day.setUTCDate(day.getUTCDate() - 1);
+    return new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeZone: 'UTC' }).format(day);
+  };
+  const time = value => value.slice(9, 11) + ':' + value.slice(11, 13);
+  const set = (selector, value) => { document.querySelector(selector).value = value; };
+  set('#xTiIn', params.get('text') || '');
+  set('input[aria-label="Add location"]', params.get('location') || '');
+  if (start && end) {
+    set('#xStDaIn', date(start));
+    set('#xEnDaIn', date(end));
+    if (!allDay) {
+      set('#xStTiIn', time(start));
+      set('#xEnTiIn', time(end));
+    }
+  }
+  document.querySelector('#xAlDaCbx input').checked = allDay;
+  document.querySelector('#xSaveBu').addEventListener('click', () => {
+    const name = document.querySelector('#xTiIn').value;
+    events.push({ label: name + ', Fixture event', id: 'fixture-' + (events.length + 1) });
+    sessionStorage.setItem(key, JSON.stringify(events));
+    location.href = '/calendar/u/1/r/week';
+  });
+} else {
+  const heading = document.createElement('h1');
+  heading.setAttribute('aria-label', 'Fixture week');
+  heading.textContent = 'Fixture week';
+  main.append(heading);
+  for (const { label, id } of events) {
+    const event = document.createElement('div');
+    event.setAttribute('data-eventchip', '');
+    event.setAttribute('data-eventid', id);
+    event.setAttribute('aria-label', label);
+    event.textContent = label;
+    main.append(event);
+  }
+}
+</script>

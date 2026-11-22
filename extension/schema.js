@@ -1,13 +1,14 @@
 const identifier = /^[a-z][a-z0-9-]{0,63}$/;
 const reserved = new Set(['constructor', 'prototype', '__proto__']);
 const fields = {
-  navigate: ['path'],
+  navigate: ['path', 'under', 'query'],
+  followLink: ['selector'],
   read: ['selector', 'as'],
-  readList: ['selector', 'as', 'attributes', 'waitMs', 'text'],
+  readList: ['selector', 'as', 'attributes', 'waitMs', 'text', 'minRows'],
   readValue: ['selector', 'as'],
   document: ['selector', 'as'],
-  click: ['selector'],
-  fill: ['selector', 'input'],
+  click: ['selector', 'gesture'],
+  fill: ['selector', 'input', 'commit'],
   assert: ['selector', 'text', 'attribute', 'input'],
   assertValue: ['selector', 'input', 'value'],
   assertValues: ['selector', 'input'],
@@ -88,7 +89,7 @@ export function validateRecipe(recipe, adapter) {
     const location = `recipe step ${index + 1}`;
     expect(record(step) && typeof step.op === 'string' && Object.hasOwn(fields, step.op), location);
     const allowed = fields[step.op];
-    shape(step, ['op', ...allowed, ...allowed.includes('selector') ? ['target', 'match'] : []], location);
+    shape(step, ['op', ...allowed, ...allowed.includes('selector') ? ['target', 'match', 'at'] : []], location);
     if (Object.hasOwn(step, 'as') || fields[step.op].includes('as')) {
       expect(id(step.as) && !outputs.has(step.as), location);
       outputs.add(step.as);
@@ -109,7 +110,24 @@ export function validateRecipe(recipe, adapter) {
         expect(match.within === undefined || (match.attribute === undefined && string(match.within, 512)), location);
       }
     }
-    if (step.op === 'navigate') expect(sameOriginPath(step.path, origin), location);
+    if (step.commit !== undefined) expect(['enter','focusout'].includes(step.commit),location);
+    if (step.gesture !== undefined) expect(step.gesture === 'tap',location);
+    if (step.under !== undefined) expect(/^\/(?:[a-zA-Z0-9_-]+\/)+$/.test(step.under),location);
+    if (step.op === 'navigate') {
+      expect(sameOriginPath(step.path, origin), location);
+      if (step.query !== undefined) {
+        expect(record(step.query) && Object.keys(step.query).length > 0 && Object.keys(step.query).length <= 16 &&
+          !new URL(step.path, origin).hash && Object.entries(step.query).every(([key, input]) =>
+            /^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/.test(key) && id(input) && inputs[input]?.type === 'string'), location);
+      }
+    }
+    if (step.at !== undefined) {
+      shape(step.at, ['path', 'under'], location);
+      expect(sameOriginPath(step.at.path, origin) && new URL(step.at.path, origin).pathname === step.at.path &&
+        !step.at.path.includes('%') && (step.at.under === undefined || !adapter.frame &&
+          /^\/(?:[a-zA-Z0-9_-]+\/)+$/.test(step.at.under)), location);
+    }
+    if (step.op === 'followLink') expect(adapter.paths?.length > 0 && !adapter.frame && step.match !== undefined, location);
     if (step.op === 'document') expect(documentPaths.length > 0, location);
     if (step.op === 'readList' && step.attributes !== undefined) {
       const attributes = step.attributes;
@@ -118,6 +136,7 @@ export function validateRecipe(recipe, adapter) {
           /^(?:aria-(?:label|checked|selected|expanded)|data-(?:eventid|calitemid|datekey)|checked|label)$/.test(name)), location);
     }
     if (step.op === 'readList') {
+      if (step.minRows !== undefined) expect(Number.isInteger(step.minRows) && step.minRows >= 1 && step.minRows <= 500, location);
       if (step.waitMs !== undefined) expect(Number.isInteger(step.waitMs) && step.waitMs >= 0 && step.waitMs <= 8000, location);
       if (step.text !== undefined) expect(string(step.text, 160), location);
     }
@@ -157,7 +176,12 @@ export function validateCatalog(catalog) {
         adapter.frame.paths.every(p => p === '/' || documentPath(p,adapter.frame.origin)), 'adapter frame');
     }
     if (adapter.identity !== undefined) {
-      shape(adapter.identity,['selector','attribute'],'adapter identity selector');
+      shape(adapter.identity,['selector','attribute','reveal','format'],'adapter identity selector');
+      expect([undefined,'email'].includes(adapter.identity.format),'adapter identity format');
+      if (adapter.identity.reveal) {
+        shape(adapter.identity.reveal,['trigger','panel'],'account panel');
+        expect(string(adapter.identity.reveal.trigger,512) && string(adapter.identity.reveal.panel,512),'account panel selectors');
+      }
       expect(string(adapter.identity.selector,512) && [undefined,'aria-label','title'].includes(adapter.identity.attribute),'adapter account check');
     }
     expect(adapter.backgroundOnly === undefined || typeof adapter.backgroundOnly === 'boolean', 'adapter background mode');

@@ -38,7 +38,7 @@ export async function verifyRunner({ browser, worker, extensionOrigin, target, a
     assert.equal(await target.locator('#receipt').textContent(), 'Sent example.txt Hello');
     assert.equal(await active(), focusedTabId);
     assert.equal((await worker.evaluate(() => chrome.storage.local.get('bridgeEnabled'))).bridgeEnabled, undefined);
-    assert.equal(await runner.getByRole('link', { name: 'Calendar sync' }).getAttribute('target'), '_blank');
+    assert.equal(await runner.getByRole('link', { name: 'Workflows' }).getAttribute('target'), '_blank');
     assert.equal(await runner.getByRole('link', { name: 'Settings' }).getAttribute('target'), '_blank');
 
     await target.goto(new URL('/', target.url()).href);

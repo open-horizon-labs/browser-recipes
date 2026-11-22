@@ -19,3 +19,6 @@ li, .actions { display: flex; align-items: center; flex-wrap: wrap; justify-cont
 #catalog-file { display: block; max-width: 100%; }
 .status { min-height: 1.55em; font-weight: 600; }
 :focus-visible { outline: .19rem solid Highlight; outline-offset: .15rem; }
+
+#origins details { width: 100%; }
+#origins details label { display: block; }

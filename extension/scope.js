@@ -1,3 +1,4 @@
+import { executeDom } from './dom.js';
 import { RecipeError } from './schema.js';
 import { hasOrigin } from './access.js';
 
@@ -31,31 +32,48 @@ export async function frameTarget(browser, tabId, adapter) {
 
 export async function boundAccount(browser, target, adapter) {
   if (!adapter.identity) return null;
+  if (adapter.identity.reveal) await assertSiteOperation(browser,adapter,'click');
   const key = bindingKey(adapter);
   const saved = await browser.storage.local.get(key);
   if (saved[key]) return saved[key];
   const [{result}] = await browser.scripting.executeScript({
     target,
-    func:({identity,origin}) => {
-      if (location.origin !== origin) return null;
-      const elements = [...document.querySelectorAll(identity.selector)].filter(element =>
-        element.getClientRects().length && getComputedStyle(element).visibility === 'visible');
-      if (elements.length !== 1 || elements[0].matches('input,textarea,[contenteditable]')) return null;
-      const value = (identity.attribute ? elements[0].getAttribute(identity.attribute) : elements[0].innerText)?.trim();
-      return value && value.length <= 512 ? value : null;
-    },
-    args:[{identity:adapter.identity,origin:adapter.frame?.origin ?? adapter.origin}],
+    func:executeDom,
+    args:[{op:'identify',identity:adapter.identity,origin:adapter.frame?.origin ?? adapter.origin,paths:adapter.frame?.paths ?? adapter.paths}],
   });
-  if (!result) throw new RecipeError('ACCOUNT_UNAVAILABLE','The app did not show an unambiguous account identity.');
+  if (!result?.ok || !result.value) throw new RecipeError('ACCOUNT_UNAVAILABLE','The app did not show an unambiguous account identity.');
   // A single lock also covers concurrent first runs in different tabs.
   return navigator.locks.request(key, async () => {
     const current = (await browser.storage.local.get(key))[key];
     if (current) return current;
-    await browser.storage.local.set({[key]:result});
-    return result;
+    await browser.storage.local.set({[key]:result.value});
+    return result.value;
   });
 }
 
 export function bindingKey(adapter) {
   return 'account:' + adapter.origin + ':' + (adapter.frame?.origin ?? '') + ':' + adapter.id;
+}
+
+export const siteOperations = {
+  navigate:'Navigate',
+  read:'Read pages',
+  write:'Change forms or click controls',
+  documents:'Read documents and attachments',
+};
+
+export function operationKey(origin,operation) {
+  return 'allow:' + origin + ':' + operation;
+}
+
+export async function assertSiteOperation(browser,adapter,op) {
+  const group = op === 'navigate' ? 'navigate'
+    : ['click','fill','attach'].includes(op) ? 'write'
+    : ['readAttachment','document'].includes(op) ? 'documents' : 'read';
+  for (const origin of operationOrigins(adapter)) {
+    const key = operationKey(origin,group);
+    if ((await browser.storage.local.get(key))[key] === false) {
+      throw new RecipeError('OPERATION_DISABLED',siteOperations[group] + ' is disabled for ' + origin + ' in Settings.');
+    }
+  }
 }

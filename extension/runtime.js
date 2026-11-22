@@ -1,4 +1,4 @@
-import { adapterGranted, boundAccount, frameTarget, withinPaths } from './scope.js';
+import { adapterGranted, assertSiteOperation, boundAccount, frameTarget, withinPaths } from './scope.js';
 import { hasOrigin } from './access.js';
 import { readAttachment } from './attachments.js';
 import { executeDom } from './dom.js';
@@ -9,6 +9,8 @@ const MAX_METADATA_OUTPUT_BYTES = 760000;
 
 const errors = {
   ACTIVE_TAB: 'This adapter requires an inactive tab.',
+  LIST_INCOMPLETE: 'The page did not show the expected result. Check the destination before retrying a write.',
+  ACCOUNT_UNAVAILABLE: 'The app did not show an unambiguous account identity.',
   ACCOUNT_CHANGED: 'The signed-in account changed or could not be identified. Check Site access in Settings.',
   AMBIGUOUS_TARGET: 'The selector matched more than one element.',
   ASSERTION_FAILED: 'The page did not satisfy the assertion.',
@@ -92,9 +94,23 @@ function binaryOutput(result) {
   return { kind, name, mimeType, base64: btoa(chunks.join('')) };
 }
 
+async function navigateTo(browser, tab, adapter, destination) {
+  const { id: tabId, url: previousUrl } = tab;
+  if (adapter.frame || originOf(destination) !== adapter.origin ||
+      !withinPaths(new URL(destination).pathname, adapter.paths)) throw pageError('PATH_NOT_ALLOWED');
+  if (previousUrl === destination) return;
+  try {
+    await browser.tabs.update(tabId, { url: destination });
+  } catch {
+    throw pageError('SCRIPT_FAILED');
+  }
+  await readyTab(browser, tabId, adapter.origin, current => current.url !== previousUrl);
+}
+
 async function runStep(browser, tabId, adapter, step, inputs) {
   const { origin } = adapter;
   const tab = await readyTab(browser, tabId, origin);
+  await assertSiteOperation(browser,adapter,step.op);
   if (adapter.backgroundOnly && tab.active) throw pageError('ACTIVE_TAB');
   if (!withinPaths(new URL(tab.url).pathname,adapter.paths)) throw pageError('PATH_NOT_ALLOWED');
   if (adapter.frame && !await hasOrigin(browser,adapter.frame.origin)) throw pageError('PERMISSION_REQUIRED');
@@ -102,26 +118,33 @@ async function runStep(browser, tabId, adapter, step, inputs) {
   const expected = await boundAccount(browser,target,adapter);
   const context = {origin:adapter.frame?.origin ?? origin, paths:adapter.frame?.paths ?? adapter.paths, identity:adapter.identity, expected};
   if (step.op === 'navigate') {
-    if (adapter.frame || !withinPaths(new URL(step.path,origin).pathname,adapter.paths)) throw pageError('PATH_NOT_ALLOWED');
-    if (expected) await inject(browser,tabId,{...context,op:'identity'},target);
-    const previousUrl = tab.url;
-    const destination = new URL(step.path, origin).href;
-    if (previousUrl === destination) return undefined;
-    try {
-      await browser.tabs.update(tabId, { url: destination });
-    } catch {
-      throw pageError('SCRIPT_FAILED');
+    let path = step.path;
+    if (step.under) {
+      const current = new URL(tab.url).pathname;
+      const account = current.slice(step.under.length).split('/')[0];
+      if (!current.startsWith(step.under) || !/^[a-zA-Z0-9_-]+$/.test(account)) throw pageError('PATH_NOT_ALLOWED');
+      path = step.under + account + step.path;
     }
-    await readyTab(browser, tabId, origin, current => current.url !== previousUrl);
+    if (adapter.frame || !withinPaths(new URL(path,origin).pathname,adapter.paths)) throw pageError('PATH_NOT_ALLOWED');
+    if (expected) await inject(browser,tabId,{...context,op:'identity'},target);
+    const destination = new URL(path, origin);
+    for (const [key, input] of Object.entries(step.query ?? {})) {
+      if (Object.hasOwn(inputs, input)) destination.searchParams.set(key, inputs[input]);
+    }
+    if (destination.href.length > 16_384) throw pageError('INVALID_INPUTS');
+    await navigateTo(browser, { ...tab, id: tabId }, adapter, destination.href);
     return undefined;
   }
   const output = await inject(browser, tabId, {
-    ...context, op: step.op, selector: step.selector ?? adapter.targets?.[step.target],
+    ...context, op: step.op, at:step.at, commit:step.commit, gesture:step.gesture, selector: step.selector ?? adapter.targets?.[step.target],
     input: step.input ? inputs[step.input] : step.value, text: step.text, attribute: step.attribute,
     match: step.match && { ...step.match, text: step.match.text ?? inputs[step.match.input] },
-    documentPaths: adapter.documentPaths, attributes: step.attributes, waitMs: step.waitMs,
+    documentPaths: adapter.documentPaths, attributes: step.attributes, minRows:step.minRows, waitMs: step.waitMs,
   }, target);
-  if (step.op === 'click') {
+  if (step.op === 'followLink') {
+    await navigateTo(browser, { ...tab, id: tabId }, adapter, output);
+    return undefined;
+  } else if (step.op === 'click') {
     await readyTab(browser, tabId, origin);
   } else if (step.op === 'readAttachment') {
     let result;
@@ -241,7 +264,11 @@ export function createDispatcher(browser, loadCatalog) {
       }
       const tabs = await browser.tabs.query({});
       return tabs.flatMap(tab => {
-        const adapterIds = granted.filter(adapter => adapter.origin === originOf(tab.pendingUrl || tab.url))
+        const url = tab.pendingUrl || tab.url;
+        const origin = originOf(url);
+        if (!origin) return [];
+        const { pathname } = new URL(url);
+        const adapterIds = granted.filter(adapter => adapter.origin === origin && withinPaths(pathname, adapter.paths))
           .map(adapter => adapter.id);
         return adapterIds.length && Number.isInteger(tab.id) ? [{ tabId: tab.id, adapterIds }] : [];
       });
@@ -264,6 +291,7 @@ export function createDispatcher(browser, loadCatalog) {
     if (!adapter) throw new RecipeError('ADAPTER_NOT_FOUND', 'This adapter is not installed.');
     await assertPermission(browser, adapter.origin);
     if (command === 'dev.inspect') {
+      await assertSiteOperation(browser,adapter,'inspect');
       const tab = await readyTab(browser, args.tabId, adapter.origin);
       if (!withinPaths(new URL(tab.url).pathname,adapter.paths)) throw pageError('PATH_NOT_ALLOWED');
       if (!await adapterGranted(browser,adapter)) throw pageError('PERMISSION_REQUIRED');

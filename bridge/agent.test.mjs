@@ -6,7 +6,7 @@ import { endianness, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { accessToken, callbackValues, readResponse, signIn, signOut } from './agent.mjs';
+import { accessToken, callbackValues, jsonRequest, plan, readResponse, signIn, signOut } from './agent.mjs';
 
 const AUTH = 'https://auth.openai.com';
 const JWKS = AUTH + '/.well-known/jwks.json';
@@ -59,6 +59,8 @@ test('installs only the selected extension and speaks native messaging', async t
     { result: { connected: false, email: null } });
   const plan = await nativeRequest(launcher.path, env, extensionId, { command: 'plan', args: { model: 'demo', prompt: 'demo' } });
   assert.equal(plan.error.code, 'SIGN_IN_REQUIRED');
+  const large = await nativeRequest(launcher.path, env, extensionId, { command: 'status', args: { padding: 'x'.repeat(2 * 1024 * 1024) } });
+  assert.equal(large.result.connected, false);
 });
 
 test('callback binds the state and returning issued client', () => {
@@ -142,6 +144,12 @@ test('only a completed inference returns the accumulated plan text', async () =>
   await assert.rejects(readResponse(events(delta)), { code: 'INCOMPLETE_RESPONSE' });
   const limit = 'data: {"type":"response.failed","response":{"error":{"code":"subscription_sharing_usage_limit_exceeded"}}}\n\n';
   await assert.rejects(readResponse(events(delta, limit)), { code: 'USAGE_LIMIT' });
+  const unavailable = limit.replace('usage_limit_exceeded', 'usage_unavailable');
+  await assert.rejects(readResponse(events(delta, unavailable)), { code: 'PROVIDER_UNAVAILABLE' });
+  const forbidden = limit.replace('usage_limit_exceeded', 'user_not_eligible');
+  await assert.rejects(readResponse(events(delta, forbidden)), { code: 'PROVIDER_FORBIDDEN' });
+  const incomplete = 'data: ' + 'x'.repeat(512 * 1024) + '\n';
+  await assert.rejects(readResponse(events(incomplete, incomplete)), { code: 'RESPONSE_TOO_LARGE' });
 });
 
 test('refresh replaces rotating credentials and sign-out clears tokens', async t => {
@@ -169,6 +177,49 @@ test('refresh replaces rotating credentials and sign-out clears tokens', async t
     },
   });
   assert.deepEqual(signedOut, { connected: false, email: 'demo@example.test', revoked: true });
+  assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), {
+    hostId: before.hostId, clientId: CLIENT, subject: before.subject, email: before.email,
+  });
+});
+
+test('the reviewed PDF and image become inline content for the ChatGPT plan', async () => {
+  const pdf = Buffer.from('%PDF-1.4\nfixture').toString('base64');
+  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC';
+  const attachments = [
+    { name: 'invoice.pdf', mimeType: 'application/pdf', base64: pdf },
+    { name: 'photo.png', mimeType: 'application/octet-stream', base64: png },
+  ];
+  const args = { prompt: 'Extract fields', model: 'vision-fixture', attachments };
+  await plan('mock-token', args, async (url, options) => {
+    assert.equal(url, 'https://api.openai.com/v1/responses');
+    const payload = JSON.parse(options.body);
+    assert.equal(payload.store, false);
+    assert.equal(payload.stream, true);
+    assert.deepEqual(payload.input[0].content, [
+      { type: 'input_text', text: args.prompt },
+      { type: 'input_file', filename: 'invoice.pdf', file_data: 'data:application/pdf;base64,' + pdf },
+      { type: 'input_image', image_url: 'data:image/png;base64,' + png },
+    ]);
+    return { ok: true, body: events('data: {"type":"response.completed"}\n\n') };
+  });
+  const invalid = { ...args, attachments: [{ name: 'wrong.pdf', mimeType: 'application/pdf', base64: png }] };
+  const unusedProvider = () => assert.fail('Invalid attachments cannot be sent');
+  await assert.rejects(plan('mock-token', invalid, unusedProvider), { code: 'INVALID_ATTACHMENT' });
+});
+
+test('terminal refresh clears tokens while preserving registration and temporary failures preserve credentials', async t => {
+  const root = temporary(t);
+  const file = join(root, 'session.json');
+  await signIn(root, {}, mockOAuth());
+  const before = JSON.parse(readFileSync(file, 'utf8'));
+  const expired = { ...before, expiresAt: 0 };
+  const exchange = (status, error) => (url, options, profile) => jsonRequest(url, options, profile, async () =>
+    Response.json({ error }, { status }));
+  await assert.rejects(accessToken(root, expired, exchange(503, 'unavailable')), { code: 'PROVIDER_UNAVAILABLE' });
+  assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), before);
+  await assert.rejects(accessToken(root, expired, exchange(400, 'invalid_client')), { code: 'OAUTH_CLIENT_INVALID' });
+  assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), before);
+  await assert.rejects(accessToken(root, expired, exchange(400, 'invalid_grant')), { code: 'SESSION_EXPIRED' });
   assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), {
     hostId: before.hostId, clientId: CLIENT, subject: before.subject, email: before.email,
   });

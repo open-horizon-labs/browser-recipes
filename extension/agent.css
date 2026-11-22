@@ -1,12 +1,42 @@
-main { max-width: 48rem; }
-nav { margin-bottom: 1.4rem; }
-h1 { margin-bottom: .5rem; }
-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
-section { margin-top: 1.3rem; }
-label { display: block; margin: .6rem 0; }
-select, input { max-width: 100%; font: inherit; }
-button { margin: .3rem .35rem .3rem 0; }
-pre { white-space: pre-wrap; overflow-wrap: anywhere; }
-#status { position: sticky; bottom: 0; background: Canvas; font-weight: 600; }
-#status:not(:empty) { padding: .6rem; border: 1px solid ButtonBorder; }
-#model-label[hidden] { display:none; }
+main { max-width: 51rem; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .6rem 1.5rem; }
+h1 { margin: 0; }
+header nav { display: flex; gap: 1.25rem; }
+a { text-underline-offset: .18em; }
+section { margin-top: 1.4rem; }
+section h2 { margin-top: .65rem; }
+.picker { display: grid; grid-template-columns: minmax(0, 1fr) max-content; gap: .4rem .6rem; }
+.picker label { grid-column: 1 / -1; }
+.picker select { min-width: 0; }
+#roles { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%, 16rem),1fr)); gap: .65rem; margin-top: .9rem; }
+#roles label, .workflow-field { display: grid; gap: .3rem; }
+label { font-weight: 600; }
+input, select, textarea { max-width: 100%; font: inherit; }
+select, input:not([type='checkbox']) { min-height: 2.45rem; padding: .3rem .45rem; }
+#steps { margin-block: .6rem 1.2rem; padding-inline-start: 1.5rem; }
+#steps li { display: list-item; padding: .25rem .25rem .45rem; }
+#steps li[aria-current='step'] { font-weight: 700; }
+#steps li small { display: inline-block; font-weight: 400; margin-inline-start: .5em; }
+#current form { display: grid; gap: .75rem; }
+#current fieldset { display: grid; gap: .75rem; min-width: 0; border: 0; padding: 0; margin: 0; }
+#current h3 { font-size: 1.1rem; margin: 0; }
+#current p { margin: 0; }
+#current textarea { margin: 0; }
+#current button { justify-self: start; }
+#current button.primary { background: Highlight; color: HighlightText; border-color: Highlight; }
+#current details textarea { margin-block: .35rem .65rem; }
+#execution > .actions { margin-top: 1.2rem; justify-content: flex-start; }
+pre { max-height: 20rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+#status[data-error] { font-weight: 700; }
+#session, #history, #developer, #guide { border-top: 1px solid color-mix(in srgb, CanvasText 20%, Canvas); padding-block: 1rem; }
+#session .actions { justify-content: flex-start; }
+[hidden] { display: none !important; }
+@media (max-width: 28rem) { .picker { grid-template-columns: minmax(0, 1fr); } .picker button { justify-self: start; } }
+
+#history-items article { border-block-start: 1px solid color-mix(in srgb, CanvasText 20%, Canvas); margin-block: .8rem; padding-block-start: .6rem; }
+#history-items article p { margin-block: .2rem .4rem; }
+#developer label { margin-block: .7rem; }
+#developer-result { margin-bottom: 0; }
+#guide { margin-top: 1.1rem; }
+#guide p { margin-top: .45rem; }
+#current .selection-option { display: block; margin-block: .35rem; }

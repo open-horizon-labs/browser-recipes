@@ -15,7 +15,7 @@ export async function convertAttachment({ name, bytes, mimeType }) {
   const isPdf = prefix.some((_, offset) => pdfSignature.every((byte, index) => prefix[offset + index] === byte))
   const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b
   try {
-    const markdown = isPdf ? await pdfMarkdown(bytes.slice()) : isZip ? officeMarkdown(bytes) : ''
+    const markdown = isPdf ? await pdfMarkdown(Uint8Array.from(bytes)) : isZip ? officeMarkdown(bytes) : ''
     return markdown.trim() && markdown.length <= MAX_MARKDOWN
       ? { kind: 'markdown', name, markdown: markdown.trim() }
       : fallback

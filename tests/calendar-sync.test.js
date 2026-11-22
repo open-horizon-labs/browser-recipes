@@ -130,4 +130,23 @@ test('schema and DOM read only reviewed public attributes on visible list rows',
   assert.deepEqual(await executeDom({ origin, ...list }), { ok: false, code: 'UNSUPPORTED_CONTROL' });
   rows.length = 0;
   assert.deepEqual(await executeDom({ origin, ...list }), { ok: true, value: [] });
+
+  const receipt = new Element();
+  receipt.innerText = 'Imported 1 out of 1 event.';
+  setTimeout(() => rows.push(receipt), 10);
+  assert.deepEqual(await executeDom({ origin, ...list, waitMs: 250, text: 'EVENT' }), {
+    ok: true, value: [{ text: 'Imported 1 out of 1 event.', attributes: {} }],
+  });
+  assert.deepEqual(await executeDom({ origin, ...list, waitMs: 0, text: 'unrelated' }), { ok: true, value: [] });
+  assert.throws(() => validateRecipe({ id: 'test', title: 'Test', steps: [{ ...list, waitMs: 8001 }] }, { origin }), /Invalid recipe step/);
+
+  const verifyAccount = { op: 'assert', selector: '.row', attribute: 'aria-label', input: 'expected-account' };
+  const recipe = { id: 'test', title: 'Test', inputs: { 'expected-account': { type: 'string' } }, steps: [verifyAccount] };
+  assert.doesNotThrow(() => validateRecipe(recipe, { origin }));
+  assert.throws(() => validateRecipe({ ...recipe, steps: [{ ...verifyAccount, attribute: 'value' }] }, { origin }), /Invalid recipe step/);
+  rows[0] = new Element({ attrs: { 'aria-label': 'Account A' } });
+  assert.deepEqual(await executeDom({ origin, ...verifyAccount, input: 'Account A' }), { ok: true, value: undefined });
+  let time = 0;
+  t.mock.method(Date, 'now', () => time++ * 4000);
+  assert.deepEqual(await executeDom({ origin, ...verifyAccount, input: 'Account B' }), { ok: false, code: 'ASSERTION_FAILED' });
 });

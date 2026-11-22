@@ -2,14 +2,42 @@
 <html lang="en">
 <meta charset="utf-8">
 <title>Google Calendar fixture import settings</title>
+<header><a href="#" role="button" aria-label="Google Account: Fixture destination">Destination Account</a></header>
 <h1>Import &amp; export</h1>
+<div role="listbox" aria-label="Add to calendar">
+  <div role="option" aria-selected="false">Default</div>
+  <div role="option" aria-selected="true">Outlook busy</div>
+</div>
 <label>Calendar file <input name="filename" type="file"></label>
 <button type="button" jsname="N8B8lb">Import</button>
+<output id="attachments">0</output>
 <output id="imports">0</output>
+<p role="status"></p>
 <script>
-document.querySelector('button').addEventListener('click', () => {
+if (new URLSearchParams(location.search).get('account') === 'other') {
+  document.querySelector('header a').setAttribute('aria-label', 'Google Account: Other destination');
+}
+for (const option of document.querySelectorAll('[role=option]')) {
+  option.onclick = () => {
+    for (const item of document.querySelectorAll('[role=option]')) item.setAttribute('aria-selected', String(item === option));
+  };
+}
+const file = document.querySelector('input[type=file]');
+const receipt = document.querySelector('[role=status]');
+file.addEventListener('change', () => {
+  const count = document.querySelector('#attachments');
+  count.textContent = String(Number(count.textContent) + 1);
+});
+document.querySelector('button').addEventListener('click', async () => {
   const count = document.querySelector('#imports');
   count.textContent = String(Number(count.textContent) + 1);
+  if (!file.files[0]) {
+    receipt.textContent = 'Select a calendar file first.';
+    return;
+  }
+  const content = await file.files[0].text();
+  const events = (content.match(/^BEGIN:VEVENT\r?$/gm) ?? []).length;
+  receipt.textContent = `Imported ${events} of ${events} event(s)`;
 });
 </script>
 </html>

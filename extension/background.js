@@ -1,3 +1,4 @@
+import { developerObserver } from './dev-observer.js';
 import { createDispatcher, safeError } from './runtime.js';
 import { nativeResponseFrames } from './native-response.js';
 import { originOf } from './schema.js';
@@ -5,6 +6,15 @@ import { getCatalog } from './settings.js';
 
 const nativeHost = 'org.openhorizonlabs.tab_recipes';
 const dispatch = createDispatcher(chrome, getCatalog);
+const recorder = developerObserver(chrome, getCatalog);
+const observerCommands = new Map([
+  ['dev.record.start', recorder.start], ['dev.record.stop', recorder.stop], ['dev.capture', recorder.capture],
+]);
+const revokeObservation = () => void recorder.revoke().catch(() => {});
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && (changes.devMode || changes.approvedOrigins)) revokeObservation();
+});
+chrome.permissions.onRemoved.addListener(revokeObservation);
 let nativePort;
 let bridgeStatus = 'Disabled';
 let connectionTask;
@@ -99,7 +109,8 @@ async function runnerData() {
 
 async function handlePageRequest({ command, args }) {
   try {
-    return { result: command === 'runner.list' ? await runnerData() : await dispatch(command, args) };
+    if (command === 'runner.list') return { result: await runnerData() };
+    return { result: await (observerCommands.has(command) ? observerCommands.get(command)(args) : dispatch(command, args)) };
   } catch (error) {
     return { error: safeError(error) };
   }
@@ -107,11 +118,17 @@ async function handlePageRequest({ command, args }) {
 
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
+  if (message?.command === 'dev.record.event') {
+    void recorder.event(message, sender).then(respond, () => respond({ keep: false }));
+    return true;
+  }
   const runner = sender.url === chrome.runtime.getURL('runner.html');
   const agent = sender.url === chrome.runtime.getURL('agent.html');
   if (runner || agent) {
     const command = message?.command;
-    if (['catalog', 'tabs', 'run', 'runner.list'].includes(command)) {
+    if (['catalog', 'tabs', 'run', 'runner.list'].includes(command) ||
+        command === 'dev.capture' ||
+        agent && ['dev.inspect','dev.test','dev.failures','dev.record.start','dev.record.stop'].includes(command)) {
       void handlePageRequest(message).then(respond);
       return true;
     }

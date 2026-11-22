@@ -3,6 +3,12 @@
 <meta charset="utf-8">
 <title>Outlook fixture week</title>
 <div id="owa-me-control-container"><button aria-label="Fixture source account">Source Account</button></div>
+<div id="mectrl_main_body" hidden><span id="mectrl_currentAccount_secondary">source@example.test</span></div>
+<script>
+  const panel = document.querySelector('#mectrl_main_body');
+  document.querySelector('#owa-me-control-container button').onclick = () => { panel.hidden = false; };
+  panel.onkeydown = event => { if (event.key === 'Escape') panel.hidden = true; };
+</script>
 <main role="main">
   <button aria-label="Jump to a specific date">February 1–7, 2027</button>
   <div data-calitemid="source-1"><button role="button" aria-label="Workshop, February 1, 9:00–10:00 AM">Workshop</button></div>

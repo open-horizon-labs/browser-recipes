@@ -29,3 +29,7 @@ The prototype needed a document behind an authenticated link. A separate process
 During discovery an agent needs page labels, links, and permission to try draft steps. A scheduled script needs only the installed recipe, tab ID, and inputs. Users enable discovery and draft execution in extension settings. Site selectors and recipes live in the community catalog so a contributor can fix them independently of the extension.
 
 The runner stops at the first failed step and reports which earlier steps completed. A caller can then check whether a write took effect before deciding to retry. The browser test breaks a target, checks the error record, and runs a repaired draft while another tab stays selected. [Integration test](../integration/smoke.mjs)
+
+## Compose recipes in the catalog
+
+The Workflows page reads the installed list of tab roles and steps. The catalog defines which recipes to run, which results to pass to the next step, and where to request approval. A workflow can use deterministic transforms, a reviewed Sign in with ChatGPT inference call, or both. The calendar example shares its runner with headline comparison and invoice review. [Prototype audit](prototype-audit.md) · [Workflow format](https://github.com/open-horizon-labs/browser-recipes-catalog/blob/main/docs/workflows.md)

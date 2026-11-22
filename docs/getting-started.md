@@ -19,7 +19,7 @@ npm run build
 node ../browser-recipes-catalog/scripts/pack.mjs > ../browser-recipes-catalog.json
 ```
 
-The build creates the extension in `dist`. The last command combines the catalog’s adapters and recipes into the file you’ll import.
+The build creates the extension in `dist`. The last command combines the catalog’s adapters, recipes and workflows into the file you’ll import.
 
 1. In the browser profile where you use Gmail, open `chrome://extensions`.
 2. Turn on **Developer mode**, choose **Load unpacked**, and select the **dist** folder inside **browser-recipes**. You should see a **Browser Recipes** extension card.
@@ -28,7 +28,7 @@ The build creates the extension in `dist`. The last command combines the catalog
 ## Load the catalog and grant one site
 
 1. Open **Browser Recipes** from the toolbar and select **Settings** in the runner.
-2. Under **Installed adapters**, choose **Choose File**, select `browser-recipes-catalog.json` from the directory containing the two checkouts, then click **Save catalog**. Look for **Catalog saved.** Saving replaces your local catalog. If you already have private recipes, keep a copy before saving.
+2. Under **Installed adapters and workflows**, choose **Choose File**, select `browser-recipes-catalog.json` from the directory containing the two checkouts, then click **Save catalog**. Look for **Catalog saved.** Saving replaces your local catalog. If you already have private recipes, keep a copy before saving.
 
 ![Installed adapters with the packed JSON file selected and the Save catalog button on the right](images/getting-started/load-catalog.png)
 
@@ -45,13 +45,13 @@ Leave **Developer tools** off. You can leave the **Local CLI bridge** off, too.
 3. Choose the Gmail recipe that reads the first visible subject, or the Hacker News recipe that reads the leading headline. Click **Run recipe**.
 4. Under **Results**, compare the subject or headline with what the target tab shows. You can use the same panel for another run. A recipe that needs text or a file will show the input before you run it.
 
-![Browser Recipes showing the headline returned by the installed Hacker News front-page recipe](images/getting-started/runner.png)
+![The installed Hacker News recipe returns a headline from a synthetic front page in the browser test](images/getting-started/runner.png)
 
 To see what else you can run, open the app README in the [catalog](https://github.com/open-horizon-labs/browser-recipes-catalog/tree/main/adapters). For a task that uses two apps, follow [Copy Outlook events to Google Calendar](calendar-sync.md).
 
 ## Use a desktop chat or script
 
-Claude or ChatGPT Desktop can walk you through the steps above while you use the panel. To let an agent run recipes itself, give it a terminal on the Linux desktop where the browser is open. An ordinary chat has no built-in Browser Recipes connector. Calendar sync has its own optional ChatGPT connection inside the extension.
+Claude or ChatGPT Desktop can walk you through the steps above while you use the panel. To let an agent run recipes itself, give it a terminal on the Linux desktop where the browser is open. An ordinary chat has no built-in Browser Recipes connector. For an installed workflow with an agent step, open **Workflows** and use **Sign in with ChatGPT**. The same connection powers the Guide. [Set up the connection](chatgpt-agent.md)
 
 For terminal access, install Python 3.9 or later and open `chrome://extensions`. Copy the 32-character Browser Recipes ID. From the runtime checkout, run **one** of these commands with your ID:
 
@@ -82,7 +82,7 @@ Start with the task you want to repeat. Give Claude or ChatGPT the starting page
 Give the agent the [catalog authoring skill](https://github.com/open-horizon-labs/browser-recipes-catalog/blob/main/.agents/skills/browser-recipes-author/SKILL.md). If the chat can’t open the link, attach the file from your catalog checkout along with the references it calls for. A desktop chat can draft JSON from observations you provide. A live test needs access to the terminal and browser profile you connected above.
 
 1. **Choose a test tab and scope.** Open the app at the agreed starting page. For a new app, the agent first adds an adapter for the exact site origin. Repeat the catalog pack command above and save the file in Settings, then grant that site access. Agree on any change the recipe may make before running a draft.
-2. **Discover the flow.** In extension settings, enable **Developer tools**. The agent uses `tabs` and `dev.inspect` to see the controls on the chosen tab. If you’re running commands for the chat, share only the relevant controls. Inspection results can include private page text.
+2. **Discover the flow.** In extension settings, enable **Developer tools**. Open **Workflows → Developer tools → Inspect tab**, or use `tabs` and `dev.inspect` through the CLI. For a draft based on your own actions, choose **Start recording**, perform the task in the selected document, then **Stop recording and load draft**. The draft uses placeholders for field values. If you’re running commands for the chat, share only the relevant controls. Inspection results can include private page text.
 3. **Save and test the draft.** The agent puts shared targets in `adapters/<app>/adapter.json`, gives each recipe its own JSON file under `recipes/`, and documents the use case in the app README. Repack and save any new targets before using `dev.test`. Drafts execute real actions. For uploads or downloads, use a test attachment first. [Authoring instructions for writes and attachments](https://github.com/open-horizon-labs/browser-recipes-catalog/blob/main/.agents/skills/browser-recipes-author/references/writes-and-attachments.md)
 4. **Prove it works as installed.** Pack and save the final catalog again. Turn off **Developer tools**, bring a different tab to the front, and use the ordinary `run` command. Ask for the command you can reuse, the run ID, and what the agent compared with the page. If you ran the command yourself, you can confirm the output locally. For a write, check what the app actually saved.
 
