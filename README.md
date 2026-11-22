@@ -23,6 +23,25 @@ For workflows that use ChatGPT, set up the local helper on your platform. On Lin
 - **Record a task to draft a recipe.** In developer mode, record your actions or let an agent inspect the page controls. The recording produces editable steps with placeholders for field values. Test the draft against the app before sharing it. [Authoring guide](docs/getting-started.md)
 - **See where a run failed.** Run history shows when each step ran and which earlier outputs it used. The failure report identifies the failed operation and target so an author can reproduce the problem and test a fix. [Run history](docs/runs.md)
 
+## Architecture
+
+A browser-use agent can inspect a page and choose its next action as it goes. Browser Recipes captures those decisions in a recipe so the same task can run again from a button or a script. If the app changes, update the adapter or recipe for the next run.
+
+```mermaid
+flowchart LR
+    Author["Person or agent"] -->|"Inspect the app or record a task"| Catalog["Adapters, recipes, and workflows"]
+    Catalog -->|"Install definitions"| Extension["Browser Recipes extension"]
+    Caller["Side panel or CLI"] -->|"Start a run with inputs"| Extension
+    Extension -->|"Execute recipe steps"| Tab["Signed-in app tab"]
+    Tab -->|"Return page data"| Extension
+    Extension -->|"Return results or ask for input"| Caller
+    Extension <-->|"Data and reply for an optional workflow step"| ChatGPT
+```
+
+- **The adapter** names the site and maps controls to browser selectors. **The recipe** declares ordered steps, inputs, and outputs. [Recipe format](docs/recipes.md)
+- **The extension** checks access to the site and executes those steps through Chromium APIs in your existing session. A background run leaves the selected tab and cursor free. Chrome remote debugging can stay disabled. [Runtime design](docs/design.md)
+- **The workflow** connects recipes across apps, passes results between steps, and pauses for sign-in, review, or approval. An optional ChatGPT step processes the data the workflow sends it. Browser actions still run through recipes. [Workflows and run history](docs/runs.md)
+
 ## Examples
 
 ### Read Outlook events from the shell
