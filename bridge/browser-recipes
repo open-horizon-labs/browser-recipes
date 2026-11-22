@@ -29,6 +29,7 @@ MAX_RESPONSE_BYTES = 12 * 1024 * 1024
 MAX_RESPONSE_CHUNKS = (MAX_RESPONSE_BYTES + RESPONSE_CHUNK_BYTES - 1) // RESPONSE_CHUNK_BYTES
 COMMAND_TIMEOUT = 60
 HOST_PATHS = {
+    "browseros-neo": ".config/browser-claw/NativeMessagingHosts",
     "chrome": ".config/google-chrome/NativeMessagingHosts",
     "chromium": ".config/chromium/NativeMessagingHosts",
 }

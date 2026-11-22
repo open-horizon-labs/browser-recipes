@@ -3,6 +3,7 @@ const reserved = new Set(['constructor', 'prototype', '__proto__']);
 const fields = {
   navigate: ['path'],
   read: ['selector', 'as'],
+  readList: ['selector', 'as', 'attributes'],
   document: ['selector', 'as'],
   click: ['selector'],
   fill: ['selector', 'input'],
@@ -97,6 +98,12 @@ export function validateRecipe(recipe, adapter) {
     }
     if (step.op === 'navigate') expect(sameOriginPath(step.path, origin), location);
     if (step.op === 'document') expect(documentPaths.length > 0, location);
+    if (step.op === 'readList' && step.attributes !== undefined) {
+      const attributes = step.attributes;
+      expect(Array.isArray(attributes) && attributes.length <= 8 && new Set(attributes).size === attributes.length &&
+        attributes.every(name => typeof name === 'string' &&
+          /^(?:aria-(?:label|checked|selected|expanded)|data-(?:eventid|calitemid|datekey)|checked)$/.test(name)), location);
+    }
     if (step.op === 'readAttachment') expect(documentPaths.includes(step.allowedPathPrefix), location);
     if (step.op === 'assert' && Object.hasOwn(step, 'text')) expect(string(step.text, 1024), location);
     if (['attach', 'fill'].includes(step.op)) {

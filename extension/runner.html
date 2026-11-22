@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Browser Recipes</title>
+    <link rel="stylesheet" href="options.css">
+    <link rel="stylesheet" href="runner.css">
+    <script type="module" src="runner.js"></script>
+  </head>
+  <body>
+    <main>
+      <header class="runner-header">
+        <h1>Browser Recipes</h1>
+        <nav aria-label="Browser Recipes">
+          <a href="agent.html" target="_blank" rel="noopener">Calendar sync</a>
+          <a href="options.html" target="_blank" rel="noopener">Settings</a>
+        </nav>
+      </header>
+      <form id="runner">
+        <fieldset id="controls" disabled>
+          <div class="field tab-field">
+            <label for="tab">Browser tab</label>
+            <select id="tab" required>
+              <option value="">Choose a tab</option>
+            </select>
+            <button id="refresh" type="button">Refresh tabs</button>
+          </div>
+          <div class="field">
+            <label for="recipe">Recipe</label>
+            <select id="recipe" required disabled>
+              <option value="">Choose a recipe</option>
+            </select>
+          </div>
+          <div id="inputs"></div>
+          <button id="run" class="primary" type="submit" disabled>Run recipe</button>
+        </fieldset>
+      </form>
+      <p id="runner-status" class="status" role="status">Loading available tabs and recipes…</p>
+      <details id="failure" hidden><summary>Failure details for recipe author</summary><textarea readonly rows="9" aria-label="Failure details"></textarea></details>
+      <section id="results" aria-labelledby="results-heading" hidden>
+        <h2 id="results-heading">Results</h2>
+        <div id="output"></div>
+      </section>
+    </main>
+  </body>
+</html>

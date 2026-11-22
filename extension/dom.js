@@ -1,5 +1,5 @@
 // Chromium serializes this function into the isolated world of the selected document.
-export async function executeDom({ origin, op, selector, input, text, documentPaths }) {
+export async function executeDom({ origin, op, selector, input, text, documentPaths, attributes = [] }) {
   const fail = code => ({ ok: false, code });
   const success = value => ({ ok: true, value });
   if (location.origin !== origin) return fail('ORIGIN_CHANGED');
@@ -59,6 +59,33 @@ export async function executeDom({ origin, op, selector, input, text, documentPa
       if (controls.length === 100) break;
     }
     return success({ origin, controls });
+  }
+
+  if (op === 'readList') {
+    let matches;
+    try {
+      matches = document.querySelectorAll(selector);
+    } catch {
+      return fail('INVALID_SELECTOR');
+    }
+    const rows = [];
+    for (const element of matches) {
+      if (!visible(element)) continue;
+      const checkbox = element.matches('input[type="checkbox"]');
+      if (credential(element) || (!checkbox && element.closest('input,select,textarea,[contenteditable]'))) {
+        return fail('UNSUPPORTED_CONTROL');
+      }
+      const text = checkbox ? '' : element.innerText.trim();
+      const values = Object.fromEntries(attributes.flatMap(name => {
+        const value = name === 'checked' && checkbox ? String(element.checked) : element.getAttribute(name);
+        return value === null ? [] : [[name, value]];
+      }));
+      if (rows.length === 500 || text.length > 4096 || Object.values(values).some(value => value.length > 4096)) {
+        return fail('OUTPUT_TOO_LARGE');
+      }
+      rows.push({ text, attributes: values });
+    }
+    return success(rows);
   }
 
   let element;

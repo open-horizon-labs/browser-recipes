@@ -8,6 +8,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
 import { verifyAuthoring } from './authoring.mjs';
+import { setupCalendar, verifyCalendar } from './calendar.mjs';
+import { uploadRecipe, verifyRunner } from './runner.mjs';
 
 const exec = promisify(execCallback);
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -21,6 +23,7 @@ const extension = path.join(stage, 'extension');
 const bridge = path.join(root, 'bridge/browser-recipes');
 let browser;
 let server;
+let calendar;
 async function call(name, args = {}) {
   const {stdout} = await exec(bridge, [name, JSON.stringify(args)], {env,maxBuffer:16 * 1024 * 1024});
   return JSON.parse(stdout);
@@ -49,7 +52,7 @@ try {
   const ticketPage = path.join(fixture,'ticket.html');
   const ticketHtml = await readFile(ticketPage,'utf8');
   await writeFile(ticketPage,ticketHtml.replace('</main>', '<a id="scan" href="/files/scan.png">Scan</a></main>'));
-  workshop.recipes.push({id:'read-scan',title:'Read test scan',steps:[
+  workshop.recipes.push(uploadRecipe, {id:'read-scan',title:'Read test scan',steps:[
     {op:'readAttachment',selector:'#scan',as:'note',allowedPathPrefix:'/files/'}
   ]});
   const probe = await fetch(fixtureOrigin).catch(() => null);
@@ -62,6 +65,7 @@ try {
   });
   const worker = browser.serviceWorkers()[0] ?? await browser.waitForEvent('serviceworker', {timeout:15000});
   const id = new URL(worker.url()).hostname;
+  const extensionOrigin = `chrome-extension://${id}`;
   // Native Messaging resolves its user manifest beneath this disposable user-data directory.
   const hosts = path.join(profile,'NativeMessagingHosts');
   await mkdir(hosts, {recursive:true});
@@ -69,12 +73,18 @@ try {
     name:'org.openhorizonlabs.tab_recipes', description:'Test bridge',path:bridge,type:'stdio',
     allowed_origins:['chrome-extension://'+id+'/']
   }));
+  calendar = await setupCalendar({extensionId:id, hosts, stage});
   const target = await browser.newPage();
   await target.goto(fixtureOrigin);
   const options = await browser.newPage();
   const optionsPath = manifest.options_page ?? manifest.options_ui.page;
-  await options.goto('chrome-extension://'+id+'/'+optionsPath);
-  await configure(options, workshop);
+  await options.goto(extensionOrigin+'/'+optionsPath);
+  await configure(options, [workshop, ...calendar.adapters]);
+  const active = () => worker.evaluate(async () => (await chrome.tabs.query({active:true,currentWindow:true}))[0].id);
+  await verifyRunner({browser, worker, extensionOrigin, target, active});
+  await verifyCalendar({browser, extensionOrigin, calendar, active});
+  console.log('PASS browser runner and calendar sync: explicit tab selection, file inputs, native and desktop comparison, staged ICS, no Import clicks.');
+  await enableBridge(options);
   const foreground = await browser.newPage();
   await foreground.goto('about:blank');
   await foreground.bringToFront();
@@ -82,7 +92,6 @@ try {
   assert.ok(tab);
   const args = {adapterId:'workshop', tabId:tab.tabId};
   const run = (recipeId, inputs={}) => call('run',{...args,recipeId,inputs});
-  const active = () => worker.evaluate(async () => (await chrome.tabs.query({active:true,currentWindow:true}))[0].id);
   assert.ok((await call('catalog')).some(adapter => adapter.id === 'workshop'));
   const focused = await active();
   assert.notEqual(tab.tabId, focused);
@@ -108,16 +117,22 @@ try {
   console.log('PASS native CLI → inactive tab: catalog import, navigation, verified write, PDF, discovery, failure handoff, draft repair, foreground preserved.');
 } finally {
   await browser?.close();
+  await calendar?.close();
   server?.kill();
   await rm(stage,{recursive:true,force:true});
 }
 
-async function configure(options, adapter) {
-  await options.locator('#catalog').fill(JSON.stringify([adapter]));
+async function configure(options, adapters) {
+  await options.locator('#catalog').fill(JSON.stringify(adapters));
   await options.locator('#save').click();
   await options.getByText('Catalog saved.',{exact:true}).waitFor({timeout:4000});
-  await options.getByRole('button',{name:/Grant access/}).click();
-  await options.getByText('Site access granted.',{exact:true}).waitFor({timeout:4000});
+  for (const { origin } of adapters) {
+    await options.getByRole('button',{name:`Grant access for ${origin}`,exact:true}).click();
+    await options.getByRole('button',{name:`Revoke access for ${origin}`,exact:true}).waitFor();
+  }
+}
+
+async function enableBridge(options) {
   await options.locator('#bridge').check();
   await options.waitForFunction(() => document.querySelector('#bridge-status').textContent.match(/^(Bridge open|Connected)$/) &&
     !document.querySelector('#bridge-status').textContent.toLowerCase().includes('disconnected'),null,{timeout:5000});

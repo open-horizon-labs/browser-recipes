@@ -1,0 +1,6 @@
+#!/usr/bin/env node
+// Native messaging entry point for the local Browser Recipes agent.
+import('./agent.mjs').then(({ main }) => main(process.argv.slice(2))).catch(() => {
+  process.stderr.write('Browser Recipes agent could not start. Check the agent installation.\n');
+  process.exitCode = 1;
+});

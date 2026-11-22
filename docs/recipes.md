@@ -24,6 +24,7 @@ A recipe contains an `id`, `title`, ordered `steps` and optionally `inputs`. Ide
 | --- | --- | --- |
 | `navigate` | `path` | Navigate the selected tab to a same-origin absolute path. |
 | `read` | `target`, `as` | Return the element's rendered text. |
+| `readList` | `target`, `as`, optional `attributes` | Return visible matches as rows with `text` and `attributes`. |
 | `assert` | `target`, optional `text` | Check visibility and, if supplied, a text substring. |
 | `fill` | `target`, `input` | Set a supported form control's value and dispatch input and change events. |
 | `click` | `target` | Click an enabled element. This can submit a transaction. |
@@ -31,7 +32,9 @@ A recipe contains an `id`, `title`, ordered `steps` and optionally `inputs`. Ide
 | `readAttachment` | `target`, `allowedPathPrefix`, `as` | Fetch the target link in the tab's session. The prefix must appear in `documentPaths`. |
 | `attach` | `target`, `input` | Set a file input from a JSON object with `name`, `mimeType` and `base64` (up to 384 KiB of input bytes). |
 
-A step that takes `target` can instead supply a CSS `selector` directly. Every step resolves its selector against the current top-level document. A missing or ambiguous target stops the run. Most operations require a visible element. After a write, read back the saved value to check that the app accepted it.
+A step that takes `target` can instead supply a CSS `selector` directly. Every step resolves its selector against the current top-level document. A missing or ambiguous single-element target stops the run. Most operations require a visible element. After a write, read back the saved value to check that the app accepted it.
+
+`readList` returns up to 500 visible rows, each with rendered text and the requested public attributes when present. Supported attributes are `aria-label`, `aria-checked`, `aria-selected`, `aria-expanded`, `data-eventid`, `data-calitemid`, `data-datekey`, and `checked`. For a checkbox, `checked` reports its current state as `"true"` or `"false"`. An empty list can be legitimate. Add an `assert` on a control unique to the starting view when a recipe needs to distinguish an empty result from the wrong page.
 
 ## Attachments
 

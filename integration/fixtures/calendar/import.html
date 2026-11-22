@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Google Calendar fixture import settings</title>
+<h1>Import &amp; export</h1>
+<label>Calendar file <input name="filename" type="file"></label>
+<button type="button" jsname="N8B8lb">Import</button>
+<output id="imports">0</output>
+<script>
+document.querySelector('button').addEventListener('click', () => {
+  const count = document.querySelector('#imports');
+  count.textContent = String(Number(count.textContent) + 1);
+});
+</script>
+</html>

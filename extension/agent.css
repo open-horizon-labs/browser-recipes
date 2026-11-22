@@ -1,0 +1,12 @@
+main { max-width: 48rem; }
+nav { margin-bottom: 1.4rem; }
+h1 { margin-bottom: .5rem; }
+fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+section { margin-top: 1.3rem; }
+label { display: block; margin: .6rem 0; }
+select, input { max-width: 100%; font: inherit; }
+button { margin: .3rem .35rem .3rem 0; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+#status { position: sticky; bottom: 0; background: Canvas; font-weight: 600; }
+#status:not(:empty) { padding: .6rem; border: 1px solid ButtonBorder; }
+#model-label[hidden] { display:none; }

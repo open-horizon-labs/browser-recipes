@@ -13,7 +13,8 @@ Use Python 3.9 or later.
    ./bridge/browser-recipes install YOUR_EXTENSION_ID
    ```
 
-   For Chromium, add `--browser chromium`. The manifest uses the absolute
+   For Chromium, add `--browser chromium`. For BrowserOS neo using the Linux
+   `browser-claw` data directory, add `--browser browseros-neo`. The manifest uses the absolute
    path of this checkout. Register again if you move it.
 3. Open Browser Recipes Options and enable the local bridge. Only one browser connection can use the socket at a time.
 
