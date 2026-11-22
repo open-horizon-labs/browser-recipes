@@ -12,7 +12,7 @@
       <h1>Browser Recipes settings</h1>
       <section aria-labelledby="access-heading">
         <h2 id="access-heading">Site access</h2>
-        <p>Grant each origin you want recipes to use. A run always needs a specific tab ID.</p>
+        <p>Grant access to each site you want recipes to use. Under Allowed operations, choose whether workflows can use results from that site in AI prompts. You review the data before sending it to ChatGPT or copying a prompt into another chat.</p>
         <ul id="origins"></ul>
       </section>
       <section aria-labelledby="catalog-heading">
@@ -28,12 +28,14 @@
       </section>
       <section aria-labelledby="sources-heading">
         <h2 id="sources-heading">Local data sources</h2>
-        <p>Enable a source only after configuring its read-only host. Credentials stay in the host configuration. Sharing source data in a model prompt is a separate choice.</p>
+        <p>Enable a source only after configuring its read-only host. Credentials stay in the host configuration. Choose separately whether workflows can include its results in AI prompts.</p>
         <ul id="sources"></ul>
       </section>
       <section aria-labelledby="bridge-heading">
-        <h2 id="bridge-heading">Local CLI bridge</h2>
-        <label><input id="bridge" type="checkbox"> Enable native messaging bridge</label>
+        <h2 id="bridge-heading">Run recipes from the terminal</h2>
+        <p>Leave this off when using the browser panel, including workflows that use ChatGPT. Turn it on if a script or local agent needs to run recipes from your Linux account.</p>
+        <label><input id="bridge" type="checkbox"> Allow programs on this computer to run recipes</label>
+        <p>Once the command-line helper is installed and connected, any program running as your Linux user can call recipes on sites you’ve granted access to.</p>
         <p id="bridge-status" role="status"></p>
       </section>
       <section aria-labelledby="companion-heading">

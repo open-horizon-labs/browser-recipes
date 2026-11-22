@@ -46,7 +46,7 @@ export async function assertWorkflowModelAccess(workflow, step, results) {
     if (recorded && !candidates.includes(recorded)) throw new Error('Saved results belong to an unknown adapter.');
     for (const id of recorded ? [recorded] : candidates) {
       for (const origin of operationOrigins(bundle.adapters.find(adapter => adapter.id === id))) {
-        if (blockedModelOrigins.includes(origin) || !await hasOrigin(chrome,origin)) throw new Error('Model sharing is disabled for ' + origin + '. Check Site access in Settings.');
+        if (blockedModelOrigins.includes(origin) || !await hasOrigin(chrome,origin)) throw new Error('This workflow needs permission to include data from ' + origin + ' in an AI prompt. Check Site access in Settings.');
       }
     }
   }

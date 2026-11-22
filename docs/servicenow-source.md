@@ -28,6 +28,6 @@ The host uses HTTPS GETs on that exact instance. It sends only fixed table and a
 
 ## Run and review
 
-Load [the local document example catalog](../examples/document-review/catalog.json). Under **Local data sources** in extension Settings, enable `servicenow`. Leave model sharing off until you have authority to share the source data. In **Review an invoice from a configured source**, enter your configured source name and choose one listed record and one attachment. Each explicit source step reads data into the workflow. Select **Allow model sharing for servicenow** only if you want the workflow to prepare or send the reviewed source result for inference.
+Load [the local document example catalog](../examples/document-review/catalog.json). Under **Local data sources** in extension Settings, enable `servicenow`. Leave model sharing off until you have authority to share the source data. In **Review an invoice from a configured source**, enter your configured source name and choose one listed record and one attachment. Each explicit source step reads data into the workflow. Select **Use data from servicenow in AI prompts** only if you want the workflow to prepare or send the reviewed source result for inference.
 
 The repository tests simulate the REST responses and validate local PDF conversion. They do not contact a ServiceNow tenant.

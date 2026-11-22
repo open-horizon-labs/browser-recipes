@@ -122,7 +122,7 @@ try {
   const options = await browser.newPage();
   await options.goto(extensionOrigin + '/options.html');
   await options.locator('#origins summary').filter({ hasText: 'Allowed operations' }).click();
-  const originShare = options.getByLabel('Allow model sharing for ' + origin);
+  const originShare = options.getByLabel('Use data from ' + origin + ' in AI prompts');
   await originShare.uncheck();
 
   const raster = await browserDocument(extensionOrigin, 'Invoice scanned PDF');
@@ -134,7 +134,7 @@ try {
   assert.equal(descriptor.base64, undefined);
   await selected.check();
   await raster.runner.locator('#compare').click();
-  await raster.runner.locator('#status').getByText(/Model sharing is disabled/).waitFor();
+  await raster.runner.locator('#status').getByText(/permission to include data from/).waitFor();
   assert.deepEqual(await events(), ['plan:text']);
   await originShare.check();
   await raster.runner.locator('#compare').click();
@@ -153,7 +153,7 @@ try {
 
   const connector = await workflow(extensionOrigin, 'review-configured-invoice');
   const enabled = options.getByLabel('Enable servicenow');
-  const share = options.getByLabel('Allow model sharing for servicenow');
+  const share = options.getByLabel('Use data from servicenow in AI prompts');
   assert.equal(await enabled.isChecked(), false);
   assert.equal(await share.isDisabled(), true);
   await connector.getByLabel('Configured source name').fill('fixture-records');
@@ -174,7 +174,7 @@ try {
   await connector.locator('#review-inputs').waitFor();
   await connector.locator('#agent-attachments input').check();
   await connector.locator('#compare').click();
-  await connector.locator('#status').getByText(/Connector data is blocked from model sharing/).waitFor();
+  await connector.locator('#status').getByText(/permission to include source data/).waitFor();
   const before = ['plan:text', 'plan:scan', 'plan:omitted', 'source:records', 'source:attachments', 'source:document'];
   assert.deepEqual(await events(), before);
   await share.check();

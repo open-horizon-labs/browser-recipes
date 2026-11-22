@@ -110,6 +110,10 @@ try {
   const args = {adapterId:'workshop', tabId:tab.tabId};
   const run = (recipeId, inputs={}) => call('run',{...args,recipeId,inputs});
   assert.ok((await call('catalog')).some(adapter => adapter.id === 'workshop'));
+  if (process.env.TERMINAL_SETTINGS_IMAGE) {
+    await options.getByText('Terminal access is connected.', {exact:true}).waitFor();
+    await options.locator('section[aria-labelledby=bridge-heading]').screenshot({path:process.env.TERMINAL_SETTINGS_IMAGE});
+  }
   const focused = await active();
   assert.notEqual(tab.tabId, focused);
   assert.equal((await run('read-ticket')).outputs.title, 'Ticket 42');
@@ -156,8 +160,8 @@ async function configure(options, bundle) {
 
 async function enableBridge(options) {
   await options.locator('#bridge').check();
-  await options.waitForFunction(() => document.querySelector('#bridge-status').textContent.match(/^(Bridge open|Connected)$/) &&
-    !document.querySelector('#bridge-status').textContent.toLowerCase().includes('disconnected'),null,{timeout:5000});
+  await options.locator('#bridge-status').getByText(/Waiting for a terminal command|Terminal access is connected/).waitFor({timeout:5000});
+
 }
 async function enableDev(options) {
   // Programmatic click keeps the test's foreground tab unchanged.

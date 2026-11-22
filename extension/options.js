@@ -49,16 +49,16 @@ async function renderOrigins() {
     const settingKey = 'blockedModelOrigins';
     const {blockedModelOrigins = []} = await chrome.storage.local.get(settingKey);
     ai.checked = !blockedModelOrigins.includes(origin);
-    ai.setAttribute('aria-label', 'Allow model sharing for ' + origin);
+    ai.setAttribute('aria-label', 'Use data from ' + origin + ' in AI prompts');
     ai.addEventListener('change', async () => {
       const state = await chrome.storage.local.get(settingKey);
       const blocked = new Set(state[settingKey] ?? []);
       if (ai.checked) blocked.delete(origin);
       else blocked.add(origin);
       await chrome.storage.local.set({[settingKey]: [...blocked]});
-      show('Model sharing setting saved.');
+      show('AI prompt permission saved.');
     });
-    aiLabel.append(ai, ' Allow model sharing');
+    aiLabel.append(ai, ' Use data from this site in AI prompts');
     const access = document.createElement('details');
     const summary = document.createElement('summary');
     summary.textContent = 'Allowed operations';
@@ -144,7 +144,7 @@ async function renderSources() {
     const enableLabel = document.createElement('label');
     const shareLabel = document.createElement('label');
     enableLabel.append(enable, ' Enable ' + id);
-    shareLabel.append(share, ' Allow model sharing for ' + id);
+    shareLabel.append(share, ' Use data from ' + id + ' in AI prompts');
     async function save() {
       if (!enable.checked) share.checked = false;
       share.disabled = !enable.checked;
@@ -225,9 +225,17 @@ document.querySelector('#catalog-file').addEventListener('change', async event =
 async function renderBridge(refresh = false) {
   try {
     const { status: message } = await chrome.runtime.sendMessage({ command: refresh ? 'bridge.refresh' : 'bridge.status' });
-    bridgeStatus.textContent = message;
+    const descriptions = {
+      Disabled: 'Terminal access is off.',
+      Connecting: 'Connecting to the command-line helper…',
+      'Bridge open': 'Waiting for a terminal command.',
+      Connected: 'Terminal access is connected.',
+      'Native host unavailable': 'Command-line helper unavailable. Check that it is installed for this browser profile.',
+      'Native host disconnected': 'Command-line helper disconnected.',
+    };
+    bridgeStatus.textContent = descriptions[message] ?? 'Terminal connection status unknown.';
   } catch {
-    bridgeStatus.textContent = 'Could not read bridge status.';
+    bridgeStatus.textContent = 'Could not check the terminal connection.';
   }
 }
 

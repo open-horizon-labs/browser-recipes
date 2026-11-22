@@ -1,4 +1,4 @@
-# Local CLI bridge
+# Run recipes from the terminal
 
 The CLI sends JSON over a Unix socket to a native messaging host. The host forwards requests to the extension and returns its replies. The socket is private to your Linux user. Any process running as that user can send commands while the bridge is connected.
 
@@ -16,7 +16,7 @@ Use Python 3.9 or later.
    For Chromium, add `--browser chromium`. For BrowserOS neo using the Linux
    `browser-claw` data directory, add `--browser browseros-neo`. The manifest uses the absolute
    path of this checkout. Register again if you move it.
-3. Open Browser Recipes Options and enable the local bridge. Only one browser connection can use the socket at a time.
+3. Open Browser Recipes Options and select **Run recipes from the terminal → Allow programs on this computer to run recipes**. Only one browser connection can use the socket at a time.
 
 ## Commands
 

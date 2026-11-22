@@ -36,7 +36,7 @@ The build creates the extension in `dist`. The last command combines the catalog
 
 ![Browser Recipes asking to read and change data on mail.google.com, with Deny and Allow buttons](images/getting-started/gmail-permission.png)
 
-Leave **Developer tools** off. You can leave the **Local CLI bridge** off, too.
+Leave **Developer tools** off. You can leave the **Run recipes from the terminal** off, too.
 
 ## Run a recipe
 
@@ -61,7 +61,7 @@ For terminal access, install Python 3.9 or later and open `chrome://extensions`.
 | Chromium | `./bridge/browser-recipes install YOUR_EXTENSION_ID --browser chromium` |
 | BrowserOS neo using the browser-claw data directory | `./bridge/browser-recipes install YOUR_EXTENSION_ID --browser browseros-neo` |
 
-In Browser Recipes settings, check **Enable native messaging bridge**. Run these from the runtime checkout. In the last command, replace `123` with the Gmail tab ID from `tabs`.
+In Browser Recipes settings, check **Allow programs on this computer to run recipes**. Run these from the runtime checkout. In the last command, replace `123` with the Gmail tab ID from `tabs`.
 
 ```sh
 ./bridge/browser-recipes catalog
@@ -71,7 +71,7 @@ In Browser Recipes settings, check **Enable native messaging bridge**. Run these
 
 The result includes a `runId` and `outputs.subject`. You can compare the result locally and keep your mail out of the chat.
 
-![Local CLI bridge enabled with the status Connected](images/getting-started/connected.png)
+![Settings showing a connected terminal helper](images/getting-started/connected.png)
 
 ## Ask an agent to write a recipe
 
@@ -91,9 +91,9 @@ Give the agent the [catalog authoring skill](https://github.com/open-horizon-lab
 | What you see | What to do |
 | --- | --- |
 | My tab is missing in the runner | Open it in the profile where you installed the extension, grant its exact site under **Settings**, and click **Refresh tabs**. |
-| The CLI cannot connect | Check that the extension is enabled in the intended profile. Register the ID for that browser again. Toggle **Enable native messaging bridge** off and on, then try `catalog`. |
+| The CLI cannot connect | Check that the extension is enabled in the intended profile. Register the ID for that browser again. Toggle **Allow programs on this computer to run recipes** off and on, then try `catalog`. |
 | The adapter is missing from `catalog` | Check for **Catalog saved.** Under **Site access**, a granted site shows **Revoke access**. |
 | `tabs` returns an empty list | Open the app in the profile with the extension. Check that the page’s domain matches the origin you granted. Run `tabs` again. |
 | A recipe fails on a step | Open **Failure details for recipe author** in the runner and copy the report. Give the agent the recipe ID, catalog revision (`git -C ../browser-recipes-catalog rev-parse HEAD` for a clean checkout), and returned error. Include the run ID, failed step, operation, target, and completed steps when present. For recent failure records, enable **Developer tools** and run `./bridge/browser-recipes dev.failures`. Check the app before retrying a write. |
 
-To disconnect, uncheck **Enable native messaging bridge**. While it is on, other programs running as your Linux user can issue commands. Use **Revoke access** to withdraw permission for an individual site. [CLI reference](../bridge/README.md) · [Recipe format](recipes.md)
+To disconnect, uncheck **Allow programs on this computer to run recipes**. While it is on, other programs running as your Linux user can issue commands. Use **Revoke access** to withdraw permission for an individual site. [CLI reference](../bridge/README.md) · [Recipe format](recipes.md)

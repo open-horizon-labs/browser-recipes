@@ -61,7 +61,7 @@ try {
   await options.getByRole('button', { name: /Grant access/ }).click();
   await options.getByText('Site access granted.', { exact: true }).waitFor();
   await options.locator('#bridge').check();
-  await options.waitForFunction(() => /^(Bridge open|Connected)$/.test(document.querySelector('#bridge-status').textContent));
+  await options.waitForFunction(() => /^(Waiting for a terminal command|Terminal access is connected)\.$/.test(document.querySelector('#bridge-status').textContent));
   const target = await browser.newPage();
   await target.goto(adapter.origin);
   const foreground = await browser.newPage();

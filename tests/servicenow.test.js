@@ -118,7 +118,7 @@ test('connector is opt-in, blocks model sharing by default, and converts PDF loc
   const result = await runConnector(step, {}, local.browser);
   assert.equal(result.document.kind, 'markdown');
   assert.match(result.document.markdown, /Grand total/);
-  await assert.rejects(assertConnectorSharingAllowed(['servicenow'], local.browser), /blocked from model sharing/);
+  await assert.rejects(assertConnectorSharingAllowed(['servicenow'], local.browser), /permission to include source data/);
 
   const large = Buffer.alloc(1024 * 1024, 32).toString('base64');
   const chunked = browserFixture({ document: { ...output.document, base64: large } }, { servicenow: { enabled: true, share: true } });

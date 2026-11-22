@@ -13,7 +13,7 @@ export async function assertConnectorSharingAllowed(sources, browser = chrome) {
   for (const source of sources) {
     if (!connectorName.test(source) || !Object.hasOwn(connectors, source) ||
         connectors[source]?.enabled !== true || connectors[source]?.share !== true) {
-      throw new Error('Connector data is blocked from model sharing. Enable sharing for the configured source in Settings.');
+      throw new Error('This workflow needs permission to include source data in an AI prompt. Check Local data sources in Settings.');
     }
   }
 }
