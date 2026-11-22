@@ -22,6 +22,10 @@ let inputKey;
 const downloadUrls = [];
 const openApp = 'open-app';
 
+const launchParams = new URLSearchParams(location.search);
+let launchRecipe = launchParams.has('adapter') && launchParams.has('recipe')
+  ? {adapter:launchParams.get('adapter'), id:launchParams.get('recipe')} : null;
+
 function choose(message, error = false) {
   status.textContent = message;
   status.toggleAttribute('data-error', error);
@@ -95,8 +99,7 @@ function updateInputs() {
 
 }
 
-function updateRecipes() {
-  const previous = recipePicker.value;
+function updateRecipes(previous = recipePicker.value) {
   const tab = tabs.find(item => String(item.tabId) === tabPicker.value);
   recipePicker.replaceChildren(new Option('Choose a recipe', ''));
   recipes = [];
@@ -115,7 +118,8 @@ function updateRecipes() {
   capture.disabled = !tab;
   if (recipes.some(recipe => recipe.key === previous)) recipePicker.value = previous;
   updateInputs();
-  if (tabPicker.value === openApp) choose('Choose a recipe. The run will pause if you need to open its app or sign in.');
+  if (tabPicker.value === openApp && recipePicker.value) choose('Start the run to find or open the app.');
+  else if (tabPicker.value === openApp) choose('Choose a recipe. The run will pause if you need to open its app or sign in.');
   else if (!tab) choose(tabs.length ? 'Select the tab you want the recipe to use.' : 'No eligible tabs are open. Open a tab for an approved site and refresh.');
   else if (!recipes.length) choose('This tab has no installed recipes.');
   else choose('');
@@ -138,7 +142,14 @@ async function refresh() {
     if (catalog.length) tabPicker.append(new Option('Find or open the app for my recipe', openApp));
     if (selected === openApp || tabs.some(item => String(item.tabId) === selected)) tabPicker.value = selected;
     else if (!tabs.length && catalog.length) tabPicker.value = openApp;
-    updateRecipes();
+    const available = launchRecipe && catalog.find(a => a.id === launchRecipe.adapter)?.recipes.some(r => r.id === launchRecipe.id);
+    if (available) {
+      const matches = tabs.filter(t => t.adapterIds.includes(launchRecipe.adapter));
+      tabPicker.value = matches.length === 1 ? String(matches[0].tabId) : openApp;
+      updateRecipes(launchRecipe.adapter + '/' + launchRecipe.id);
+      launchRecipe = null;
+      if (matches.length > 1) choose('Several app tabs are open. Choose the tab to use.');
+    } else updateRecipes();
     const noAccess = !catalog.length;
     document.querySelector('#first-workflow').hidden = !noAccess;
     form.hidden = noAccess;
@@ -147,6 +158,11 @@ async function refresh() {
       document.querySelector('#installed-workflows').hidden = !installed.length;
       document.querySelector('#first-workflow-title').textContent = installed.length ? 'Choose a workflow' : 'Choose your first workflow';
       choose((await getCatalog()).length ? 'For an installed recipe, grant its site access in Settings.' : '');
+    }
+    if (launchRecipe) {
+      const adapter = (await getCatalog()).find(a => a.id === launchRecipe.adapter && a.recipes.some(r => r.id === launchRecipe.id));
+      choose(adapter ? 'Grant site access for ' + adapter.origin + ' in Settings, then refresh this page.'
+        : 'This recipe is no longer installed. Open Settings to check the installed library.',true);
     }
   } catch (error) {
     choose(error.message, true);
@@ -255,10 +271,11 @@ form.addEventListener('submit', async event => {
 
 tabPicker.addEventListener('change', () => {
   clearResults();
-  recipePicker.value = '';
+  launchRecipe = null;
   updateRecipes();
 });
 recipePicker.addEventListener('change', () => {
+  launchRecipe = null;
   clearResults();
   choose('');
   updateInputs();

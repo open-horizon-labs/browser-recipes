@@ -129,7 +129,13 @@ export async function initializeLibrary(refreshSettings) {
           element('p','Inputs: ' + (Object.keys(contract.inputs).join(', ') || 'None')),
           element('p','Outputs: ' + (contract.outputs.join(', ') || 'None')));
         if (editable) removal(recipe,'recipe',r,a.id);
-        panel.append(recipe);
+        const row = element('div');
+        row.className = 'installed-recipe';
+        const launch = element('a','Run recipe');
+        launch.href = 'runner.html?' + new URLSearchParams({adapter:a.id,recipe:r.id});
+        launch.setAttribute('aria-label','Run recipe: ' + r.title);
+        row.append(recipe,launch);
+        panel.append(row);
       }
       if (editable) removal(panel,'adapter',a);
       adapters.append(panel);

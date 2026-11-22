@@ -27,7 +27,12 @@ export async function verifyRunner({ browser, worker, extensionOrigin, target, a
     await tab.selectOption({ index: 1 });
     const focusedTabId = await active();
     assert.notEqual(Number(await tab.inputValue()), focusedTabId);
-    await recipe.selectOption('workshop/runner-upload');
+    await runner.goto(extensionOrigin + '/options.html');
+    const section = runner.locator('#adapter-list > details').filter({has:runner.getByRole('link',{name:'Run recipe: '+uploadRecipe.title,includeHidden:true})});
+    await section.locator(':scope > summary').click();
+    await section.getByRole('link',{name:'Run recipe: '+uploadRecipe.title}).click();
+    await runner.waitForFunction(() => document.querySelector('#recipe')?.value === 'workshop/runner-upload');
+    assert.equal(await tab.inputValue(),String(await worker.evaluate(async url => (await chrome.tabs.query({})).find(t=>t.url===url).id,target.url())));
     await runner.getByLabel('message', { exact: true }).fill('Sent');
     await runner.getByLabel('file', { exact: true }).setInputFiles({
       name: 'example.txt', mimeType: 'text/plain', buffer: Buffer.from('Hello'),

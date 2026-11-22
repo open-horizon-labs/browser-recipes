@@ -44,3 +44,5 @@ li, .actions { display: flex; align-items: center; flex-wrap: wrap; justify-cont
 #community-results li div { flex: 1 1 16rem; }
 #community-results small { display: block; overflow-wrap: anywhere; }
 #community-controls input, #community-controls select { max-width: 100%; font: inherit; }
+
+.installed-recipe { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: baseline; gap: .75rem; }
