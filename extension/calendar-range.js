@@ -33,6 +33,7 @@ export function weekStart(heading) {
 
 export async function readCalendarRange(bounds, heading, turn, readRows) {
   const [first,last] = bounds;
+  let size = 0;
   let start = weekStart(await heading());
   const pages = [], events = [];
   const firstWeek = start + Math.floor((first-start)/(7*day))*7*day;
@@ -53,6 +54,8 @@ export async function readCalendarRange(bounds, heading, turn, readRows) {
     const before = await heading();
     if (weekStart(before) !== start) fail('Calendar changed during the read.');
     const rows = await readRows();
+    size += new TextEncoder().encode(JSON.stringify(rows)).length;
+    if (size > 760000) fail('The calendar range exceeds the result size limit. Split the range.');
     if (await heading() !== before) fail('Calendar changed during the read.');
     pages.push(before.split('\n')[0]);
     for (const row of rows) {
