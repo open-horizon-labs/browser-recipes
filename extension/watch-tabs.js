@@ -16,6 +16,7 @@ export function watchTabs(update, isBusy) {
       await update();
     }, 180);
   }
+  chrome.tabs.onActivated.addListener(schedule);
   chrome.tabs.onCreated.addListener(schedule);
   chrome.tabs.onRemoved.addListener(schedule);
   chrome.tabs.onReplaced.addListener(schedule);
@@ -29,4 +30,5 @@ export function watchTabs(update, isBusy) {
   });
   window.addEventListener('focus', schedule);
   document.addEventListener('visibilitychange', schedule);
+  return schedule;
 }

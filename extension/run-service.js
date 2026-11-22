@@ -12,6 +12,7 @@ const ended = new Set(['completed','failed','cancelled','interrupted']);
 const now = () => new Date().toISOString();
 const uuid = () => crypto.randomUUID();
 const requireValue = (condition, message) => { if (!condition) throw new RecipeError('INVALID_ARGUMENTS',message); };
+const connectionTags = new Set(['auth','open-app','account-review','background-tab']);
 const pause = Symbol('pause');
 
 async function revision(value) {
@@ -161,11 +162,25 @@ export function createRunService({browser,loadBundle,dispatch,allowModel,allowRe
       } finally { active.delete(id); }
     });
   }
+  async function runConnection(data,def,role,boundRole) {
+    const adapters = def.dependencies ?? [def.adapter];
+    const named = data.named?.[role];
+    if (named) {
+      const {adapter,identity} = await accountFor(browser,adapters.filter(a=>a.id===named.adapterId),named.label);
+      requireValue(identity === named.identity,'The account label changed. Start a new run.');
+      const recipeId = def.recipe?.id ?? def.workflow.steps.find(s=>s.tab===role && s.op==='recipe')?.recipeId;
+      const entry = adapter.recipes.find(r=>r.id===recipeId);
+      const entryPath = data.connections?.[role] && Object.values(data.entries).some(e=>!e.pending) ? undefined : entry?.entryPath;
+      return findAccountTab(browser,adapter,identity,data.tabs[role],entryPath,entry?.accountPrefix);
+    }
+    if (def.recipe && data.args.autoConnect === true)
+      return findRecipeTab(browser,def.adapter,def.recipe,data.tabs[role]);
+    return resolveConnection(browser,adapters,boundRole,data.tabs[role],def.recipe);
+  }
   async function drive(run,data,def) {
     const id = run.runId;
     const entries = new Map(Object.entries(data.entries));
     const roles = def.workflow?.tabs ?? {target:{adapterId:def.adapter.id}};
-    const adapters = def.dependencies ?? [def.adapter];
     const resolved = {};
     const touch = step => {
       let entry = run.steps.find(e => e.id === step.id);
@@ -183,7 +198,7 @@ export function createRunService({browser,loadBundle,dispatch,allowModel,allowRe
       run.pending = {id:uuid(),tag,stepId:step?.id,label:context.label ?? step?.label ?? run.title,
         tags:[...new Set([tag,...(context.tags ?? [])])],
         ...(Number.isInteger(context.tabId) ? {tabId:context.tabId} : {})};
-      if (['auth','account-review','background-tab','open-app'].includes(tag) && browser.runtime?.getURL)
+      if (connectionTags.has(tag) && browser.runtime?.getURL)
         run.pending.reviewUrl = browser.runtime.getURL('runs.html') + '#' + id;
       run.status = 'waiting';
       run.actions ??= [];
@@ -197,18 +212,7 @@ export function createRunService({browser,loadBundle,dispatch,allowModel,allowRe
         const boundRole = data.connections?.[role] ? {adapterId:data.connections[role]} : definition;
         let connection;
         try {
-          const named = data.named?.[role];
-          if (named) {
-            const {adapter,identity} = await accountFor(browser,adapters.filter(a=>a.id===named.adapterId),named.label);
-            requireValue(identity === named.identity,'The account label changed. Start a new run.');
-            const recipeId = def.recipe?.id ?? def.workflow.steps.find(s=>s.tab===role && s.op==='recipe')?.recipeId;
-            const entry = adapter.recipes.find(r=>r.id===recipeId);
-            const entryPath = data.connections?.[role] && data.entries && Object.values(data.entries).some(e=>!e.pending)
-              ? undefined : entry?.entryPath;
-            connection = await findAccountTab(browser,adapter,identity,data.tabs[role],entryPath,entry?.accountPrefix);
-          } else if (def.recipe && data.args.autoConnect === true) {
-            connection = await findRecipeTab(browser,def.adapter,def.recipe,data.tabs[role]);
-          } else connection = await resolveConnection(browser,adapters,boundRole,data.tabs[role],def.recipe);
+          connection = await runConnection(data,def,role,boundRole);
         } catch (error) {
           if (!['ACCOUNT_CHANGED','ACTIVE_TAB'].includes(error.code)) throw error;
           const key = 'connection/' + role;
@@ -363,6 +367,8 @@ export function createRunService({browser,loadBundle,dispatch,allowModel,allowRe
         await save(run);
         return run;
       }
+      const checking = command === 'runs.checkConnection';
+      if (checking && (run.pending?.id !== args.actionId || !connectionTags.has(run.pending?.tag))) return run;
       requireValue(run.status === 'waiting' && run.pending?.id === args.actionId,'This action is stale. Read the current run before continuing.');
       const data = await getData(id);
       requireValue(data,'The private session for this run has ended.');
@@ -408,8 +414,23 @@ export function createRunService({browser,loadBundle,dispatch,allowModel,allowRe
           throw error;
         }
       }
-      requireValue(command === 'runs.resume','Unknown run operation.');
-      if (!['auth','open-app','account-review','background-tab','interrupt-check'].includes(tag)) {
+      requireValue(checking || command === 'runs.resume','Unknown run operation.');
+      if (checking) {
+        const selected = data.tabs[role];
+        if (selected == null && tag !== 'open-app') return run;
+        if (selected != null && !await browser.tabs.get(selected).catch(() => null)) return run;
+        const bound = data.connections?.[role];
+        const definition = bound ? {adapterId:bound} : def.workflow?.tabs[role] ?? {adapterId:def.adapter.id};
+        try {
+          const connection = await runConnection(data,def,role,definition);
+          if (connection.needsBackground || connection.needsAuth || connection.missingTab) return run;
+          data.tabs[role] = connection.tabId;
+        } catch (error) {
+          if (['ACCOUNT_CHANGED','ACCOUNT_UNAVAILABLE','ACTIVE_TAB','TAB_REQUIRED','ORIGIN_CHANGED','FRAME_UNAVAILABLE'].includes(error.code)) return run;
+          throw error;
+        }
+      }
+      if (!connectionTags.has(tag) && tag !== 'interrupt-check') {
         if (tag === 'agent') await allowModel(def.workflow,step,new Map(Object.entries(data.entries)));
         validateWorkflowAction(tag,data.context,args.answer);
         data.answers[data.actionKey] = args.answer;

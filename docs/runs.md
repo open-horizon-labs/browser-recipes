@@ -38,7 +38,7 @@ Every user action uses the same `waiting` status. The pending request has an ID,
 
 The decision above approves a write. A handoff accepts an object such as `{}` or `{"value":{"reviewed":true}}`. A selection takes `{"indices":[0,2]}`. The next pause gets its own action ID. Answering a stale request fails. If a write might already have happened, the run asks for verification before another attempt.
 
-For sign-in, choose **Open** on the request to bring the app forward. Sign in directly on the site, then check the connection in Runs. The extension checks the origin and configured account again. A changed account keeps the run waiting. A missing account control alone does not establish that sign-in expired. Scripts can inspect the request and tell the user where to go. Foregrounding the browser is a separate user click.
+For sign-in, choose **Open app in browser** on the request. Sign in on the site and return to Runs. Runs checks the site and account again and continues when the connection is ready. If the run needs a background tab, select another tab. **Check now** retries from the same screen. Scripts can include the review link in a handoff.
 
 ## Private results and history
 

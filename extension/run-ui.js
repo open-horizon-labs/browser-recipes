@@ -1,3 +1,4 @@
+import { watchTabs } from './watch-tabs.js';
 import { recipeEditor } from './recipe-edit-ui.js';
 import { chatgptAgentRequest } from './chatgpt-agent-transport.js';
 import { workflowInputs, workflowPrompt } from './workflow.js';
@@ -16,6 +17,7 @@ let records = [];
 let busy = false;
 let view = 0;
 let revision;
+let connectionAction;
 const urls = [];
 
 function node(tag, text, className) {
@@ -281,13 +283,13 @@ async function renderPending(record, parent) {
     primary('I checked the destination. Continue', () => ({}));
   } else if (connection) {
     const guidance = {
-      auth: 'Sign in in the app tab, then check the connection here.',
-      'open-app': 'Open the app tab, then check the connection here.',
-      'account-review': 'Switch to the account approved for this app, then check the connection here.',
-      'background-tab': 'Leave the app open, select another browser tab, then continue here.',
+      auth: 'Sign in in the app tab. This run continues when the app is ready.',
+      'open-app': 'Open the app. This run continues when the app is ready.',
+      'account-review': 'Switch to the account approved for this app.',
+      'background-tab': 'Leave the app open and select another tab. The run will continue automatically.',
     };
     controls.append(node('p', guidance[type]));
-    primary('Check connection and continue', () => ({}));
+    controls.append(action('Check now', () => checkConnection(true)));
   } else if (type === 'fields') {
     const inputs = new Map();
     for (const [name, spec] of Object.entries(context.spec ?? {})) {
@@ -430,9 +432,32 @@ async function load(force = false, returned) {
     revision = fingerprint;
     for (const url of urls.splice(0)) URL.revokeObjectURL(url);
     await renderRecord(record);
+    const next = ['auth','open-app','account-review','background-tab'].includes(record.pending?.tag)
+      ? {runId:record.runId,actionId:record.pending.id} : undefined;
+    const changed = next?.actionId !== connectionAction?.actionId;
+    connectionAction = next;
+    if (next && changed) scheduleConnectionCheck();
   }
 }
+async function checkConnection(manual = false) {
+  const current = connectionAction;
+  if (!current || runId() !== current.runId) return;
+  const record = await request('runs.checkConnection',current);
+  if (runId() !== current.runId) return;
+  if (record.pending?.id !== current.actionId) await load(true,record);
+  else if (manual) notice('The app still needs your attention.');
+}
+
+const scheduleConnectionCheck = watchTabs(async () => {
+  if (!connectionAction) return;
+  busy = true;
+  try { await checkConnection(); }
+  catch (error) { notice(error.message,true); }
+  finally { busy = false; }
+}, () => busy);
+
 function navigate() {
+  connectionAction = undefined;
   revision = undefined;
   el('record').replaceChildren();
   notice('Loading runs…');

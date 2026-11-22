@@ -45,7 +45,7 @@ export async function verifyRuns({call,failure,tab,target,foreground,active,exte
   assert.equal(removed.deleted,3);
   assert.equal((await call('runs.list')).some(r => r.runId === start.runId || r.parentRunId === start.runId),false);
   await target.goto(new URL('/signin.html',target.url()).href);
-  const needs = await call('runs.start',{kind:'recipe',adapterId:'workshop',recipeId:'read-ticket',tabId:tab.tabId});
+  const needs = await call('runs.start',{kind:'recipe',adapterId:'workshop',recipeId:'read-ticket',tabId:tab.tabId,retainData:true});
   assert.equal(needs.pending.tag,'auth');
   assert.equal(await active(),front);
   const still = await call('runs.resume',{runId:needs.runId,actionId:needs.pending.id,answer:{}});
@@ -57,10 +57,13 @@ export async function verifyRuns({call,failure,tab,target,foreground,active,exte
     await runsPage.getByRole('button',{name:/Open .*tab|Open .*sign in|Open app/i}).first().click();
     await runsPage.waitForFunction(async id => (await chrome.tabs.query({active:true,currentWindow:true}))[0]?.id === id,tab.tabId,{timeout:5000});
     await target.goto(new URL('/ticket.html',target.url()).href);
-    await foreground.bringToFront();
-    const final = await call('runs.resume',{runId:needs.runId,actionId:still.pending.id,answer:{}});
+    await runsPage.bringToFront();
+    await runsPage.getByText('Ticket 42',{exact:true}).first().waitFor({state:'attached'});
+    const final = await call('runs.get',{runId:needs.runId,includeData:true});
     assert.equal(final.result.title,'Ticket 42');
+    assert.equal(final.actions.length,still.actions.length);
+    await foreground.bringToFront();
     assert.equal(await active(),front);
   } finally { await runsPage.close(); }
-  console.log('PASS shared native runs, tagged review, lineage, stale approval rejection, explicit headless sign-in handoff and data retention.');
+  console.log('PASS shared native runs, tagged review, lineage, stale approval rejection, automatic resume after sign-in and data retention.');
 }

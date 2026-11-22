@@ -139,3 +139,22 @@ test('standalone recipe review runs with revised inputs and retains original out
   assert.deepEqual(retained.result, { value: 'changed after read' });
   assert.deepEqual(retained.entries.echo.audit.originalOutputs, { value: 'changed before read' });
 });
+
+test('connection checks leave a blocked action alone and stop at the next human action', async () => {
+  const {freshWorker,calls,tabs} = harness(signIn);
+  const service = freshWorker();
+  const run = await service('runs.start',{kind:'workflow',workflowId:'review-and-apply',tabs:{target:44}});
+  const check = actionId => service('runs.checkConnection',{runId:run.runId,actionId});
+  const blocked = await check(run.pending.id);
+  assert.deepEqual(blocked.actions,run.actions);
+  assert.deepEqual(calls,[]);
+  tabs.get(44).url = app;
+  const next = await check(run.pending.id);
+  assert.equal(next.pending.tag,'handoff');
+  assert.deepEqual(calls,['inspect']);
+  assert.deepEqual((await check(next.pending.id)).pending,next.pending);
+  const write = await service('runs.resume',{runId:run.runId,actionId:next.pending.id,answer:{}});
+  assert.equal(write.pending.tag,'write');
+  assert.deepEqual((await check(write.pending.id)).pending,write.pending);
+  assert.deepEqual(calls,['inspect']);
+});

@@ -15,7 +15,7 @@ const nativeHost = 'org.openhorizonlabs.tab_recipes';
 const dispatch = createDispatcher(chrome, getCatalog);
 const runService = createRunService({browser:chrome,loadBundle:installedBundle,dispatch,allowModel:assertWorkflowModelAccess,allowRecipeModel:assertRecipeModelAccess,plan:chatgptAgentRequest});
 const publicCommands = new Set(['definitions.list','runs.start','runs.list','runs.get','runs.resume','runs.cancel','runs.forget','run']);
-const pageCommands = new Set([...publicCommands,'runs.open','runs.editReview','runs.editPlan','runs.agent','runs.agentReview','runs.interactiveBegin','runs.interactiveStep']);
+const pageCommands = new Set([...publicCommands,'runs.checkConnection','runs.open','runs.editReview','runs.editPlan','runs.agent','runs.agentReview','runs.interactiveBegin','runs.interactiveStep']);
 const recorder = developerObserver(chrome, getCatalog);
 const observerCommands = new Map([
   ['dev.record.start', recorder.start], ['dev.record.stop', recorder.stop], ['dev.capture', recorder.capture],
