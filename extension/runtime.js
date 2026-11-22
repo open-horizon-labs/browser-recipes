@@ -1,3 +1,4 @@
+import { adapterGranted, boundAccount, frameTarget, withinPaths } from './scope.js';
 import { hasOrigin } from './access.js';
 import { readAttachment } from './attachments.js';
 import { executeDom } from './dom.js';
@@ -7,6 +8,7 @@ const MAX_BINARY_OUTPUT_BYTES = 8 * 1024 * 1024;
 const MAX_METADATA_OUTPUT_BYTES = 760000;
 
 const errors = {
+  ACCOUNT_CHANGED: 'The signed-in account changed or could not be identified. Check Site access in Settings.',
   AMBIGUOUS_TARGET: 'The selector matched more than one element.',
   ASSERTION_FAILED: 'The page did not satisfy the assertion.',
   ATTACHMENT_FAILED: 'Could not read or convert the attachment.',
@@ -61,11 +63,11 @@ async function readyTab(browser, tabId, origin, isReady = () => true) {
   }
 }
 
-async function inject(browser, tabId, operation) {
+async function inject(browser, tabId, operation, target = { tabId }) {
   let result;
   try {
     const responses = await browser.scripting.executeScript({
-      target: { tabId },
+      target,
       func: executeDom,
       args: [operation],
     });
@@ -92,7 +94,14 @@ function binaryOutput(result) {
 async function runStep(browser, tabId, adapter, step, inputs) {
   const { origin } = adapter;
   const tab = await readyTab(browser, tabId, origin);
+  if (!withinPaths(new URL(tab.url).pathname,adapter.paths)) throw pageError('PATH_NOT_ALLOWED');
+  if (adapter.frame && !await hasOrigin(browser,adapter.frame.origin)) throw pageError('PERMISSION_REQUIRED');
+  const target = await frameTarget(browser,tabId,adapter);
+  const expected = await boundAccount(browser,target,adapter);
+  const context = {origin:adapter.frame?.origin ?? origin, paths:adapter.frame?.paths ?? adapter.paths, identity:adapter.identity, expected};
   if (step.op === 'navigate') {
+    if (adapter.frame || !withinPaths(new URL(step.path,origin).pathname,adapter.paths)) throw pageError('PATH_NOT_ALLOWED');
+    if (expected) await inject(browser,tabId,{...context,op:'identity'},target);
     const previousUrl = tab.url;
     const destination = new URL(step.path, origin).href;
     if (previousUrl === destination) return undefined;
@@ -105,16 +114,16 @@ async function runStep(browser, tabId, adapter, step, inputs) {
     return undefined;
   }
   const output = await inject(browser, tabId, {
-    origin, op: step.op, selector: step.selector ?? adapter.targets?.[step.target],
-    input: step.input ? inputs[step.input] : undefined, text: step.text,
-    documentPaths: adapter.documentPaths, attributes: step.attributes,
-  });
+    ...context, op: step.op, selector: step.selector ?? adapter.targets?.[step.target],
+    input: step.input ? inputs[step.input] : undefined, text: step.text, attribute: step.attribute,
+    documentPaths: adapter.documentPaths, attributes: step.attributes, waitMs: step.waitMs,
+  }, target);
   if (step.op === 'click') {
     await readyTab(browser, tabId, origin);
   } else if (step.op === 'readAttachment') {
     let result;
     try {
-      result = await readAttachment(browser, tabId, { ...output, allowedPathPrefix: step.allowedPathPrefix });
+      result = await readAttachment(browser, tabId, { ...output, allowedPathPrefix: step.allowedPathPrefix, target, topUrl:tab.url });
     } catch (error) {
       const attachmentErrors = {
         'file-too-large': 'OUTPUT_TOO_LARGE',
@@ -214,7 +223,7 @@ export function createDispatcher(browser, loadCatalog) {
       const catalog = await loadCatalog();
       const granted = [];
       for (const adapter of catalog) {
-        if (await hasOrigin(browser, adapter.origin)) granted.push(adapter);
+        if (await adapterGranted(browser, adapter)) granted.push(adapter);
       }
       if (command === 'catalog') {
         return granted.map(({ id, title, origin, recipes }) => ({
@@ -252,8 +261,12 @@ export function createDispatcher(browser, loadCatalog) {
     if (!adapter) throw new RecipeError('ADAPTER_NOT_FOUND', 'This adapter is not installed.');
     await assertPermission(browser, adapter.origin);
     if (command === 'dev.inspect') {
-      await readyTab(browser, args.tabId, adapter.origin);
-      return await inject(browser, args.tabId, { origin: adapter.origin, op: 'inspect' });
+      const tab = await readyTab(browser, args.tabId, adapter.origin);
+      if (!withinPaths(new URL(tab.url).pathname,adapter.paths)) throw pageError('PATH_NOT_ALLOWED');
+      if (!await adapterGranted(browser,adapter)) throw pageError('PERMISSION_REQUIRED');
+      const target = await frameTarget(browser,args.tabId,adapter);
+      return await inject(browser,args.tabId,{origin:adapter.frame?.origin ?? adapter.origin,paths:adapter.frame?.paths ?? adapter.paths,
+        identity:adapter.identity,expected:await boundAccount(browser,target,adapter),op:'inspect'},target);
     }
     const recipe = command === 'dev.test'
       ? validateRecipe(args.recipe, adapter)

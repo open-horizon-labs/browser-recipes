@@ -4,12 +4,12 @@ const MAX_BYTES = 8 * 1024 * 1024
 
 export async function readAttachment(browser, tabId, request) {
   const { pageUrl, href, name, allowedPathPrefix } = request
-  await assertTab(browser, tabId, pageUrl)
+  await assertTab(browser, tabId, request.topUrl ?? pageUrl)
 
   let result
   try {
     const frames = await browser.scripting.executeScript({
-      target: { tabId },
+      target: request.target ?? { tabId },
       func: injectAttachment,
       args: [{ pageUrl, href, allowedPathPrefix, maxBytes: MAX_BYTES }],
     })
@@ -18,7 +18,7 @@ export async function readAttachment(browser, tabId, request) {
     throw attachmentError('download-failed')
   }
   if (!result?.ok) throw attachmentError(result?.code || 'download-failed')
-  await assertTab(browser, tabId, pageUrl)
+  await assertTab(browser, tabId, request.topUrl ?? pageUrl)
 
   const bytes = Uint8Array.from(atob(result.base64), character => character.charCodeAt(0))
   const fileName = String(name || result.name || 'document').replace(/[\\/\x00-\x1f\x7f]/g, '_').slice(0, 180)

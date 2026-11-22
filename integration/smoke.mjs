@@ -8,7 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
 import { verifyAuthoring } from './authoring.mjs';
-import { setupCalendar, verifyCalendar } from './calendar.mjs';
+import { setupWorkflows, verifyWorkflows } from './calendar.mjs';
 import { uploadRecipe, verifyRunner } from './runner.mjs';
 
 const exec = promisify(execCallback);
@@ -23,7 +23,7 @@ const extension = path.join(stage, 'extension');
 const bridge = path.join(root, 'bridge/browser-recipes');
 let browser;
 let server;
-let calendar;
+let fixtures;
 async function call(name, args = {}) {
   const {stdout} = await exec(bridge, [name, JSON.stringify(args)], {env,maxBuffer:16 * 1024 * 1024});
   return JSON.parse(stdout);
@@ -73,17 +73,17 @@ try {
     name:'org.openhorizonlabs.tab_recipes', description:'Test bridge',path:bridge,type:'stdio',
     allowed_origins:['chrome-extension://'+id+'/']
   }));
-  calendar = await setupCalendar({extensionId:id, hosts, stage});
+  fixtures = await setupWorkflows({extensionId:id, hosts, stage});
   const target = await browser.newPage();
   await target.goto(fixtureOrigin);
   const options = await browser.newPage();
   const optionsPath = manifest.options_page ?? manifest.options_ui.page;
   await options.goto(extensionOrigin+'/'+optionsPath);
-  await configure(options, [workshop, ...calendar.adapters]);
+  await configure(options, { ...fixtures.bundle, adapters: [workshop, ...fixtures.bundle.adapters] });
   const active = () => worker.evaluate(async () => (await chrome.tabs.query({active:true,currentWindow:true}))[0].id);
   await verifyRunner({browser, worker, extensionOrigin, target, active});
-  await verifyCalendar({browser, extensionOrigin, calendar, active});
-  console.log('PASS browser runner and calendar sync: explicit tab selection, file inputs, native and desktop comparison, staged ICS, no Import clicks.');
+  await verifyWorkflows({browser, extensionOrigin, fixtures, active});
+  console.log('PASS catalog workflows: selected tabs, native and desktop review, gated fixture import, account mismatch, and unrelated read-only workflow.');
   await enableBridge(options);
   const foreground = await browser.newPage();
   await foreground.goto('about:blank');
@@ -117,16 +117,16 @@ try {
   console.log('PASS native CLI → inactive tab: catalog import, navigation, verified write, PDF, discovery, failure handoff, draft repair, foreground preserved.');
 } finally {
   await browser?.close();
-  await calendar?.close();
+  await fixtures?.close();
   server?.kill();
   await rm(stage,{recursive:true,force:true});
 }
 
-async function configure(options, adapters) {
-  await options.locator('#catalog').fill(JSON.stringify(adapters));
+async function configure(options, bundle) {
+  await options.locator('#catalog').fill(JSON.stringify(bundle));
   await options.locator('#save').click();
   await options.getByText('Catalog saved.',{exact:true}).waitFor({timeout:4000});
-  for (const { origin } of adapters) {
+  for (const { origin } of bundle.adapters) {
     await options.getByRole('button',{name:`Grant access for ${origin}`,exact:true}).click();
     await options.getByRole('button',{name:`Revoke access for ${origin}`,exact:true}).waitFor();
   }

@@ -3,11 +3,11 @@ const reserved = new Set(['constructor', 'prototype', '__proto__']);
 const fields = {
   navigate: ['path'],
   read: ['selector', 'as'],
-  readList: ['selector', 'as', 'attributes'],
+  readList: ['selector', 'as', 'attributes', 'waitMs', 'text'],
   document: ['selector', 'as'],
   click: ['selector'],
   fill: ['selector', 'input'],
-  assert: ['selector', 'text'],
+  assert: ['selector', 'text', 'attribute', 'input'],
   attach: ['selector', 'input'],
   readAttachment: ['selector', 'as', 'allowedPathPrefix'],
 };
@@ -104,8 +104,18 @@ export function validateRecipe(recipe, adapter) {
         attributes.every(name => typeof name === 'string' &&
           /^(?:aria-(?:label|checked|selected|expanded)|data-(?:eventid|calitemid|datekey)|checked)$/.test(name)), location);
     }
+    if (step.op === 'readList') {
+      if (step.waitMs !== undefined) expect(Number.isInteger(step.waitMs) && step.waitMs >= 0 && step.waitMs <= 8000, location);
+      if (step.text !== undefined) expect(string(step.text, 160), location);
+    }
     if (step.op === 'readAttachment') expect(documentPaths.includes(step.allowedPathPrefix), location);
-    if (step.op === 'assert' && Object.hasOwn(step, 'text')) expect(string(step.text, 1024), location);
+    if (step.op === 'assert') {
+      if (step.text !== undefined) expect(string(step.text, 1024), location);
+      if (step.attribute !== undefined || step.input !== undefined) {
+        expect(step.attribute === 'aria-label' && step.text === undefined &&
+          id(step.input) && Object.hasOwn(inputs, step.input) && inputs[step.input].type === 'string', location);
+      }
+    }
     if (['attach', 'fill'].includes(step.op)) {
       const type = step.op === 'attach' ? 'attachment' : 'string';
       expect(id(step.input) && Object.hasOwn(inputs, step.input) && inputs[step.input].type === type, location);
@@ -118,10 +128,23 @@ export function validateCatalog(catalog) {
   expect(Array.isArray(catalog) && catalog.length <= 64, 'adapter catalog');
   const adapters = new Set();
   for (const adapter of catalog) {
-    shape(adapter, ['id', 'title', 'origin', 'recipes', 'targets', 'documentPaths'], 'adapter');
+    shape(adapter, ['id', 'title', 'origin', 'recipes', 'targets', 'documentPaths', 'paths', 'frame', 'identity'], 'adapter');
     expect(id(adapter.id) && !adapters.has(adapter.id) && string(adapter.title) &&
       typeof adapter.origin === 'string' && originOf(adapter.origin) === adapter.origin, 'adapter identity or origin');
     adapters.add(adapter.id);
+    if (adapter.paths !== undefined) {
+      expect(Array.isArray(adapter.paths) && adapter.paths.length > 0 && adapter.paths.every(p => p === '/' || documentPath(p,adapter.origin)), 'adapter paths');
+    }
+    if (adapter.frame !== undefined) {
+      shape(adapter.frame, ['origin','paths'], 'adapter frame');
+      expect(originOf(adapter.frame.origin) !== null && originOf(adapter.frame.origin) === adapter.frame.origin &&
+        Array.isArray(adapter.frame.paths) && adapter.frame.paths.length > 0 &&
+        adapter.frame.paths.every(p => p === '/' || documentPath(p,adapter.frame.origin)), 'adapter frame');
+    }
+    if (adapter.identity !== undefined) {
+      shape(adapter.identity,['selector','attribute'],'adapter identity selector');
+      expect(string(adapter.identity.selector,512) && [undefined,'aria-label','title'].includes(adapter.identity.attribute),'adapter account check');
+    }
     if (Object.hasOwn(adapter, 'targets')) {
       expect(record(adapter.targets) && Object.keys(adapter.targets).length <= 128, 'adapter targets');
       for (const [name, selector] of Object.entries(adapter.targets)) {
