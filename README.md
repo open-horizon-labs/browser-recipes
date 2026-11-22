@@ -4,6 +4,12 @@ Many web apps have no Model Context Protocol (MCP) server an agent can call. An 
 
 Tab Recipes lets an agent inspect the app once and save the navigation, actions, and checks as a JSON recipe. On subsequent runs, a script or an agent passes the recipe ID, tab ID, and inputs to the CLI. The Chromium extension executes those steps directly in the open tab, using its signed-in session. Replay needs no model call, leaves the foreground tab selected, and keeps your cursor free.
 
+## Running on a managed desktop
+
+**Chrome remote debugging can stay disabled.** A workflow runner sends the recipe and tab IDs through a local native messaging host. The extension checks site access and uses Chrome’s scripting API to run the steps in the existing tab. This also works for attachments that require the user’s signed-in session.
+
+For a corporate desktop that prohibits remote debugging, this removes the need for a policy exception just to run a workflow. IT still needs to allow the extension, its native messaging host, and access to the sites being automated. The current CLI bridge supports Linux. [Extension permissions](extension/manifest.json) · [Local bridge](bridge/README.md)
+
 ## Example: read an expense report in Concur
 
 The recipe opens Manage Expenses, checks the heading, and returns the visible text of the first active report card.
@@ -33,7 +39,7 @@ npm run build
 node ../tab-recipes-catalog/scripts/pack.mjs > /tmp/tab-recipes-catalog.json
 ```
 
-1. Open the browser's Extensions page, enable Developer mode, choose **Load unpacked**, and select the generated `dist` directory.
+1. For this unpacked install, open the browser's Extensions page, enable Developer mode, choose **Load unpacked**, and select the generated `dist` directory.
 2. Copy the displayed extension ID. Run `./bridge/tab-recipes install YOUR_EXTENSION_ID` for Chrome, or append `--browser chromium` for Chromium.
 3. Open the extension options. Import the JSON array generated above, grant access to `https://news.ycombinator.com`, and enable the local bridge.
 4. Open Hacker News at `https://news.ycombinator.com/` in a tab. You can switch back to another tab.
