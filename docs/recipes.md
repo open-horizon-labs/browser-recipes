@@ -23,6 +23,9 @@ A recipe contains an `id`, `title`, ordered `steps` and optionally `inputs`. Ide
 | Operation | Fields in addition to `op` | Effect |
 | --- | --- | --- |
 | `navigate` | `path` | Navigate the selected tab to a same-origin absolute path. |
+| `readValue` | `target`, `as` | Read a visible read-only text control. Credential controls are excluded. |
+| `assertValue` | `target`, either `input` or `value` | Verify that a supported control has the exact expected string value. |
+| `assertValues` | `target`, `input` | Verify the exact values of visible controls in document order. The string input contains a JSON array of strings. |
 | `read` | `target`, `as` | Return the element's rendered text. |
 | `readList` | `target`, `as`, optional `attributes`, `text`, and `waitMs` | Return visible matches as rows with `text` and `attributes`. |
 | `assert` | `target`, optional `text` or `attribute` and `input` | Check visibility, a rendered text substring, or an exact `aria-label` value from a string input. |
@@ -34,7 +37,18 @@ A recipe contains an `id`, `title`, ordered `steps` and optionally `inputs`. Ide
 
 A step that takes `target` can instead supply a CSS `selector` directly. Every step resolves its selector against the current top-level document. A missing or ambiguous single-element target stops the run. Most operations require a visible element. After a write, read back the saved value to check that the app accepted it.
 
-`readList` returns up to 500 visible rows, each with rendered text and the requested public attributes when present. Supported attributes are `aria-label`, `aria-checked`, `aria-selected`, `aria-expanded`, `data-eventid`, `data-calitemid`, `data-datekey`, and `checked`. For a checkbox, `checked` reports its current state as `"true"` or `"false"`. Set `text` to filter on a rendered text substring without matching case. Set `waitMs` up to 8000 to wait for a result. An empty list can be legitimate. Add an `assert` on a control unique to the starting view when a recipe needs to distinguish an empty result from the wrong page.
+`readList` returns up to 500 visible rows, each with rendered text and the requested public attributes when present. Supported attributes are `aria-label`, `aria-checked`, `aria-selected`, `aria-expanded`, `data-eventid`, `data-calitemid`, `data-datekey`, `label`, and `checked`. The `label` attribute returns the associated form label or explicit ARIA label. For a checkbox, `checked` reports its current state as `"true"` or `"false"`. Use `text` for a case-insensitive substring match and `waitMs` (up to 8000) to wait for a result. An empty list can be legitimate. Add an `assert` on a control unique to the starting view when a recipe needs to distinguish an empty result from the wrong page.
+
+For a selector that matches repeated controls, add `"match": {"text": "Save"}`
+or supply the expected text with `"match": {"input": "choice"}`. The runtime
+compares whitespace-normalized text exactly, then requires one visible match
+(except for `readList`). Set `attribute` to `aria-label` for that attribute or
+to `label` for an associated form label. Set `within` to a CSS selector to
+match the nearest ancestor’s rendered text instead. Caller text stays separate
+from the selector.
+
+Set `"backgroundOnly": true` on an adapter to stop a run before any step
+while its tab is active.
 
 ## Attachments
 

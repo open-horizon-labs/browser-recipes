@@ -8,6 +8,7 @@ const MAX_BINARY_OUTPUT_BYTES = 8 * 1024 * 1024;
 const MAX_METADATA_OUTPUT_BYTES = 760000;
 
 const errors = {
+  ACTIVE_TAB: 'This adapter requires an inactive tab.',
   ACCOUNT_CHANGED: 'The signed-in account changed or could not be identified. Check Site access in Settings.',
   AMBIGUOUS_TARGET: 'The selector matched more than one element.',
   ASSERTION_FAILED: 'The page did not satisfy the assertion.',
@@ -94,6 +95,7 @@ function binaryOutput(result) {
 async function runStep(browser, tabId, adapter, step, inputs) {
   const { origin } = adapter;
   const tab = await readyTab(browser, tabId, origin);
+  if (adapter.backgroundOnly && tab.active) throw pageError('ACTIVE_TAB');
   if (!withinPaths(new URL(tab.url).pathname,adapter.paths)) throw pageError('PATH_NOT_ALLOWED');
   if (adapter.frame && !await hasOrigin(browser,adapter.frame.origin)) throw pageError('PERMISSION_REQUIRED');
   const target = await frameTarget(browser,tabId,adapter);
@@ -115,7 +117,8 @@ async function runStep(browser, tabId, adapter, step, inputs) {
   }
   const output = await inject(browser, tabId, {
     ...context, op: step.op, selector: step.selector ?? adapter.targets?.[step.target],
-    input: step.input ? inputs[step.input] : undefined, text: step.text, attribute: step.attribute,
+    input: step.input ? inputs[step.input] : step.value, text: step.text, attribute: step.attribute,
+    match: step.match && { ...step.match, text: step.match.text ?? inputs[step.match.input] },
     documentPaths: adapter.documentPaths, attributes: step.attributes, waitMs: step.waitMs,
   }, target);
   if (step.op === 'click') {

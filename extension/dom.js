@@ -1,12 +1,17 @@
 // Chromium serializes this function into the isolated world of the selected document.
-export async function executeDom({ origin, paths, identity, expected, op, selector, input, text, attribute, documentPaths, attributes = [], waitMs = 0 }) {
+export async function executeDom({ origin, paths, identity, expected, op, selector, input, text, match, attribute, documentPaths, attributes = [], waitMs = 0 }) {
   const fail = code => ({ ok: false, code });
   const success = value => ({ ok: true, value });
   if (location.origin !== origin) return fail('ORIGIN_CHANGED');
 
   function visible(element) {
-    return element instanceof HTMLElement && element.getClientRects().length > 0 &&
-      getComputedStyle(element).visibility === 'visible';
+    if (!(element instanceof HTMLElement)) return false;
+    const style = getComputedStyle(element);
+    if (style.visibility !== 'visible') return false;
+    return element.getClientRects().length > 0 ||
+      (['read', 'readList', 'assert'].includes(op) && style.display === 'contents' &&
+        [...element.children].some(child => child.getClientRects().length > 0 &&
+          getComputedStyle(child).visibility === 'visible'));
   }
 
   function checkScope() {
@@ -56,6 +61,14 @@ export async function executeDom({ origin, paths, identity, expected, op, select
       /password|passwd|one-time-code|otp|sec(?:urity)?[-_ ]?code|cc[-_]|credit[-_ ]?card/i.test(hint);
   }
 
+  function labelOf(element, attributeName) {
+    if (attributeName === 'label') {
+      return element.getAttribute('aria-label') ??
+        [...(element.labels ?? [])].map(label => label.textContent).join(' ');
+    }
+    return attributeName ? element.getAttribute(attributeName) : element.innerText;
+  }
+
   if (op === 'inspect') {
     const controls = [];
     const candidates = document.querySelectorAll('a[href],button,input,select,textarea,[role="button"],[role="link"],h1,h2,h3,[contenteditable]');
@@ -76,58 +89,65 @@ export async function executeDom({ origin, paths, identity, expected, op, select
     return success({ origin, controls });
   }
 
-  if (op === 'readList') {
-    const deadline = Date.now() + waitMs;
-    const matchText = text === undefined ? undefined : clean(text, 160).toLowerCase();
-    for (;;) {
-      const denied = checkScope();
-      if (denied) return denied;
-      let matches;
-      try {
-        matches = document.querySelectorAll(selector);
-      } catch {
-        return fail('INVALID_SELECTOR');
-      }
-      const rows = [];
-      for (const element of matches) {
-        if (!visible(element)) continue;
-        const checkbox = element.matches('input[type="checkbox"]');
-        if (credential(element) || (!checkbox && element.closest('input,select,textarea,[contenteditable]'))) {
-          return fail('UNSUPPORTED_CONTROL');
-        }
-        const rendered = checkbox ? '' : element.innerText.trim();
-        if (matchText !== undefined && !clean(rendered, 4096).toLowerCase().includes(matchText)) continue;
-        const values = Object.fromEntries(attributes.flatMap(name => {
-          const value = name === 'checked' && checkbox ? String(element.checked) : element.getAttribute(name);
-          return value === null ? [] : [[name, value]];
-        }));
-        if (rows.length === 500 || rendered.length > 4096 || Object.values(values).some(value => value.length > 4096)) {
-          return fail('OUTPUT_TOO_LARGE');
-        }
-        rows.push({ text: rendered, attributes: values });
-      }
-      if (rows.length || Date.now() >= deadline) return success(rows);
-      await new Promise(resolve => setTimeout(resolve, Math.min(100, deadline - Date.now())));
-    }
-  }
 
   let element;
   let observedTarget = false;
+  const listDeadline = Date.now() + waitMs;
   const deadline = Date.now() + 3500;
+  const isValueControl = target => target.matches('input:not([type=file]),select,textarea') && !credential(target);
   try {
     for (;;) {
       const denied = checkScope();
       if (denied) return denied;
-      const matches = document.querySelectorAll(selector);
+      const candidates = document.querySelectorAll(selector);
+      const matches = match ? [...candidates].filter(candidate => visible(candidate) &&
+        !credential(candidate) && (!candidate.matches('input,textarea,select,[contenteditable]') || match.attribute || match.within) &&
+        clean(match.within ? candidate.closest(match.within)?.innerText : labelOf(candidate, match.attribute), 131072)
+          === clean(match.text, 16384))
+        : candidates;
+      if (op === 'readList') {
+        const rows = [];
+        for (const item of matches) {
+          if (!visible(item)) continue;
+          const checkbox = item.matches('input[type="checkbox"]');
+          if (credential(item) || (!checkbox && item.closest('input,select,textarea,[contenteditable]'))) {
+            return fail('UNSUPPORTED_CONTROL');
+          }
+          const renderedText = checkbox ? '' : item.innerText.trim();
+          if (text !== undefined && !clean(renderedText,4096).toLowerCase().includes(clean(text,160).toLowerCase())) continue;
+          const values = Object.fromEntries(attributes.flatMap(name => {
+            const value = name === 'checked' && checkbox ? String(item.checked) : labelOf(item, name);
+            return value === null ? [] : [[name, value]];
+          }));
+          if (rows.length === 500 || renderedText.length > 4096 || Object.values(values).some(value => value.length > 4096)) {
+            return fail('OUTPUT_TOO_LARGE');
+          }
+          rows.push({ text: renderedText, attributes: values });
+        }
+        if (rows.length || Date.now() >= listDeadline) return success(rows);
+        await new Promise(resolve => setTimeout(resolve, 100));
+        continue;
+      }
+      if (op === 'assertValues') {
+        const controls = [...matches].filter(visible);
+        if (!controls.every(isValueControl)) return fail('UNSUPPORTED_CONTROL');
+        return JSON.stringify(controls.map(control => control.value)) === JSON.stringify(JSON.parse(input))
+          ? success() : fail('ASSERTION_FAILED');
+      }
       if (matches.length > 1) return fail('AMBIGUOUS_TARGET');
       element = matches[0];
       if (element && (visible(element) || (op === 'attach' && element.matches('input[type="file"]')))) {
         observedTarget = true;
         if (credential(element)) return fail('UNSUPPORTED_CONTROL');
-        if (op !== 'assert' || (text === undefined && attribute === undefined)) break;
-        if (attribute !== undefined && element.getAttribute(attribute) === input) return success();
-        if (element.closest('input,select,textarea,[contenteditable]')) return fail('UNSUPPORTED_CONTROL');
-        if (text !== undefined && clean(element.innerText, 131072).includes(clean(text, 1024))) return success();
+        if (op === 'assertValue') {
+          if (!isValueControl(element)) return fail('UNSUPPORTED_CONTROL');
+          if (element.value === input) return success();
+        } else {
+          if (op !== 'assert' || (text === undefined && attribute === undefined)) break;
+          if (attribute !== undefined && element.getAttribute(attribute) === input) return success();
+          if (element.closest('input,select,textarea,[contenteditable]')) return fail('UNSUPPORTED_CONTROL');
+          if (text !== undefined && clean(element.innerText, 131072).includes(clean(text, 1024))) return success();
+        }
       }
       if (Date.now() >= deadline) return fail(observedTarget ? 'ASSERTION_FAILED' : 'TARGET_UNAVAILABLE');
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -135,9 +155,13 @@ export async function executeDom({ origin, paths, identity, expected, op, select
   } catch {
     return fail('INVALID_SELECTOR');
   }
+  if (op === 'readValue') {
+    if (!element.matches('input[readonly]:not([type=file]),textarea[readonly]')) return fail('UNSUPPORTED_CONTROL');
+    return element.value.length <= 131072 ? success(element.value) : fail('OUTPUT_TOO_LARGE');
+  }
   if (op === 'read' || op === 'assert') {
-    if (element.closest('input,select,textarea,[contenteditable]')) return fail('UNSUPPORTED_CONTROL');
     if (op === 'assert') return success();
+    if (element.closest('input,select,textarea,[contenteditable]')) return fail('UNSUPPORTED_CONTROL');
     const value = element.innerText.trim();
     return value.length <= 131072 ? success(value) : fail('OUTPUT_TOO_LARGE');
   }
