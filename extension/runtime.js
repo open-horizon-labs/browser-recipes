@@ -7,6 +7,7 @@ const MAX_BINARY_OUTPUT_BYTES = 8 * 1024 * 1024;
 const MAX_METADATA_OUTPUT_BYTES = 760000;
 
 const errors = {
+  ACTIVE_TAB: 'This adapter requires an inactive tab.',
   AMBIGUOUS_TARGET: 'The selector matched more than one element.',
   ASSERTION_FAILED: 'The page did not satisfy the assertion.',
   ATTACHMENT_FAILED: 'Could not read or convert the attachment.',
@@ -92,6 +93,7 @@ function binaryOutput(result) {
 async function runStep(browser, tabId, adapter, step, inputs) {
   const { origin } = adapter;
   const tab = await readyTab(browser, tabId, origin);
+  if (adapter.backgroundOnly && tab.active) throw pageError('ACTIVE_TAB');
   if (step.op === 'navigate') {
     const previousUrl = tab.url;
     const destination = new URL(step.path, origin).href;
@@ -106,7 +108,9 @@ async function runStep(browser, tabId, adapter, step, inputs) {
   }
   const output = await inject(browser, tabId, {
     origin, op: step.op, selector: step.selector ?? adapter.targets?.[step.target],
-    input: step.input ? inputs[step.input] : undefined, text: step.text,
+    input: step.input ? inputs[step.input] : step.value, text: step.text,
+    match: step.match && { ...step.match, text: step.match.text ?? inputs[step.match.input] },
+    attribute: step.attribute,
     documentPaths: adapter.documentPaths,
   });
   if (step.op === 'click') {

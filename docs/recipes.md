@@ -23,6 +23,10 @@ A recipe contains an `id`, `title`, ordered `steps` and optionally `inputs`. Ide
 | Operation | Fields in addition to `op` | Effect |
 | --- | --- | --- |
 | `navigate` | `path` | Navigate the selected tab to a same-origin absolute path. |
+| `readAll` | `target`, `as`, optional `attribute: "aria-label"` | Return visible matching text or labels in document order, or an empty array. |
+| `readValue` | `target`, `as` | Read a visible read-only text control. Credential controls are excluded. |
+| `assertValue` | `target`, either `input` or `value` | Verify that a supported control has the exact expected string value. |
+| `assertValues` | `target`, `input` | Verify the exact values of visible controls in document order. The string input contains a JSON array of strings. |
 | `read` | `target`, `as` | Return the element's rendered text. |
 | `assert` | `target`, optional `text` | Check visibility and, if supplied, a text substring. |
 | `fill` | `target`, `input` | Set a supported form control's value and dispatch input and change events. |
@@ -32,6 +36,17 @@ A recipe contains an `id`, `title`, ordered `steps` and optionally `inputs`. Ide
 | `attach` | `target`, `input` | Set a file input from a JSON object with `name`, `mimeType` and `base64` (up to 384 KiB of input bytes). |
 
 A step that takes `target` can instead supply a CSS `selector` directly. Every step resolves its selector against the current top-level document. A missing or ambiguous target stops the run. Most operations require a visible element. After a write, read back the saved value to check that the app accepted it.
+
+For a selector that matches repeated controls, add `"match": {"text": "Save"}`
+or supply the expected text with `"match": {"input": "choice"}`. The runtime
+compares whitespace-normalized text exactly, then requires one visible match
+(except for `readAll`). Set `attribute` to `aria-label` for that attribute or
+to `label` for an associated form label. Set `within` to a CSS selector to
+match the nearest ancestor’s rendered text instead. Caller text stays separate
+from the selector.
+
+Set `"backgroundOnly": true` on an adapter to stop a run before any step
+while its tab is active.
 
 ## Attachments
 

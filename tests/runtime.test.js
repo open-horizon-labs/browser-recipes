@@ -183,3 +183,49 @@ test('does not inject into the old document while a direct navigation commits', 
   assert.equal((await dispatch('run', request())).outputs.name, 'Ticket');
   assert.equal(tabs[0].url, adapter.origin + '/ticket');
 });
+
+test('exact caller text is forwarded as a match operand, never added to a selector', async () => {
+  const tested = structuredClone(adapter);
+  tested.recipes = [{
+    id: 'pick', title: 'Pick an exact label',
+    inputs: { label: { type: 'string' }, value: { type: 'string' } },
+    steps: [
+      { op: 'click', selector: 'button', match: { input: 'label', attribute: 'aria-label' } },
+      { op: 'assertValue', selector: '#message', input: 'value' },
+      { op: 'readAll', selector: '.receipt', attribute: 'aria-label', as: 'receipts' },
+    ],
+  }];
+  validateCatalog([tested]);
+  const { browser, operations } = mockBrowser();
+  const dispatch = createDispatcher(browser, async () => [tested]);
+  const label = 'A ["quoted"] label';
+  await dispatch('run', request({ recipeId: 'pick', inputs: { label, value: 'Reviewed' } }));
+  assert.equal(operations[0].selector, 'button');
+  assert.equal(operations[0].match.text, label);
+  assert.equal(operations[1].input, 'Reviewed');
+  assert.equal(operations[2].attribute, 'aria-label');
+  await assert.rejects(dispatch('run', request({ recipeId: 'pick', inputs: { value: 'Reviewed' } })), { code: 'INVALID_INPUTS' });
+});
+
+test('ordered field verification accepts only a bounded array of strings', () => {
+  const recipe = {
+    id: 'check-split', title: 'Check reviewed percentages',
+    inputs: { split: { type: 'string' } },
+    steps: [{ op: 'assertValues', selector: '.percent', input: 'split' }],
+  };
+  validateRecipe(recipe, adapter);
+  validateInputs(recipe, { split: '["60","40"]' });
+  for (const split of ['60,40', '[]', '[60,40]', '{"first":"60"}']) {
+    assert.throws(() => validateInputs(recipe, { split }), { code: 'INVALID_INPUTS' });
+  }
+});
+
+test('a background-only adapter stops before injecting into an active tab', async () => {
+  const tested = { ...adapter, backgroundOnly: true };
+  validateCatalog([tested]);
+  const { browser, operations, tabs } = mockBrowser();
+  const dispatch = createDispatcher(browser, async () => [tested]);
+  tabs[0].active = true;
+  await assert.rejects(dispatch('run', request()), { code: 'ACTIVE_TAB' });
+  assert.deepEqual(operations, []);
+});

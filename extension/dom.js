@@ -1,12 +1,17 @@
 // Chromium serializes this function into the isolated world of the selected document.
-export async function executeDom({ origin, op, selector, input, text, documentPaths }) {
+export async function executeDom({ origin, op, selector, input, text, match, attribute, documentPaths }) {
   const fail = code => ({ ok: false, code });
   const success = value => ({ ok: true, value });
   if (location.origin !== origin) return fail('ORIGIN_CHANGED');
 
   function visible(element) {
-    return element instanceof HTMLElement && element.getClientRects().length > 0 &&
-      getComputedStyle(element).visibility === 'visible';
+    if (!(element instanceof HTMLElement)) return false;
+    const style = getComputedStyle(element);
+    if (style.visibility !== 'visible') return false;
+    return element.getClientRects().length > 0 ||
+      (['read', 'readAll', 'assert'].includes(op) && style.display === 'contents' &&
+        [...element.children].some(child => child.getClientRects().length > 0 &&
+          getComputedStyle(child).visibility === 'visible'));
   }
 
   function clean(value, limit) {
@@ -41,6 +46,14 @@ export async function executeDom({ origin, op, selector, input, text, documentPa
       /password|passwd|one-time-code|otp|sec(?:urity)?[-_ ]?code|cc[-_]|credit[-_ ]?card/i.test(hint);
   }
 
+  function labelOf(element, attributeName) {
+    if (attributeName === 'label') {
+      return element.getAttribute('aria-label') ??
+        [...(element.labels ?? [])].map(label => label.textContent).join(' ');
+    }
+    return attributeName ? element.getAttribute(attributeName) : element.innerText;
+  }
+
   if (op === 'inspect') {
     const controls = [];
     const candidates = document.querySelectorAll('a[href],button,input,select,textarea,[role="button"],[role="link"],h1,h2,h3,[contenteditable]');
@@ -64,17 +77,40 @@ export async function executeDom({ origin, op, selector, input, text, documentPa
   let element;
   let observedTarget = false;
   const deadline = Date.now() + 3500;
+  const isValueControl = target => target.matches('input:not([type=file]),select,textarea') && !credential(target);
   try {
     for (;;) {
-      const matches = document.querySelectorAll(selector);
+      const candidates = document.querySelectorAll(selector);
+      const matches = match ? [...candidates].filter(candidate => visible(candidate) &&
+        !credential(candidate) && (!candidate.matches('input,textarea,select,[contenteditable]') || match.attribute || match.within) &&
+        clean(match.within ? candidate.closest(match.within)?.innerText : labelOf(candidate, match.attribute), 131072)
+          === clean(match.text, 16384))
+        : candidates;
+      if (op === 'readAll') {
+        const values = [...matches].filter(candidate => visible(candidate) && !credential(candidate) &&
+          (attribute || !candidate.closest('input,select,textarea,[contenteditable]'))).map(candidate =>
+            (labelOf(candidate, attribute) ?? '').trim());
+        return values.length <= 2000 && JSON.stringify(values).length <= 131072 ? success(values) : fail('OUTPUT_TOO_LARGE');
+      }
+      if (op === 'assertValues') {
+        const controls = [...matches].filter(visible);
+        if (!controls.every(isValueControl)) return fail('UNSUPPORTED_CONTROL');
+        return JSON.stringify(controls.map(control => control.value)) === JSON.stringify(JSON.parse(input))
+          ? success() : fail('ASSERTION_FAILED');
+      }
       if (matches.length > 1) return fail('AMBIGUOUS_TARGET');
       element = matches[0];
       if (element && (visible(element) || (op === 'attach' && element.matches('input[type="file"]')))) {
         observedTarget = true;
         if (credential(element)) return fail('UNSUPPORTED_CONTROL');
-        if (op !== 'assert' || text === undefined) break;
-        if (element.closest('input,select,textarea,[contenteditable]')) return fail('UNSUPPORTED_CONTROL');
-        if (clean(element.innerText, 131072).includes(clean(text, 1024))) return success();
+        if (op === 'assertValue') {
+          if (!isValueControl(element)) return fail('UNSUPPORTED_CONTROL');
+          if (element.value === input) return success();
+        } else {
+          if (op !== 'assert' || text === undefined) break;
+          if (element.closest('input,select,textarea,[contenteditable]')) return fail('UNSUPPORTED_CONTROL');
+          if (clean(element.innerText, 131072).includes(clean(text, 1024))) return success();
+        }
       }
       if (Date.now() >= deadline) return fail(observedTarget ? 'ASSERTION_FAILED' : 'TARGET_UNAVAILABLE');
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -82,9 +118,13 @@ export async function executeDom({ origin, op, selector, input, text, documentPa
   } catch {
     return fail('INVALID_SELECTOR');
   }
+  if (op === 'readValue') {
+    if (!element.matches('input[readonly]:not([type=file]),textarea[readonly]')) return fail('UNSUPPORTED_CONTROL');
+    return element.value.length <= 131072 ? success(element.value) : fail('OUTPUT_TOO_LARGE');
+  }
   if (op === 'read' || op === 'assert') {
-    if (element.closest('input,select,textarea,[contenteditable]')) return fail('UNSUPPORTED_CONTROL');
     if (op === 'assert') return success();
+    if (element.closest('input,select,textarea,[contenteditable]')) return fail('UNSUPPORTED_CONTROL');
     const value = element.innerText.trim();
     return value.length <= 131072 ? success(value) : fail('OUTPUT_TOO_LARGE');
   }
