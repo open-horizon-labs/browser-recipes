@@ -42,6 +42,12 @@ flowchart LR
 - **The extension** checks access to the site and executes those steps through Chromium APIs in your existing session. A background run leaves the selected tab and cursor free. Chrome remote debugging can stay disabled. [Runtime design](docs/design.md)
 - **The workflow** connects recipes across apps, passes results between steps, and pauses for sign-in, review, or approval. An optional ChatGPT step processes the data the workflow sends it. Browser actions still run through recipes. [Workflows and run history](docs/runs.md)
 
+### Rerun a recipe without a model
+
+A model can help write a recipe once. After you install it, the extension runs the saved steps directly. For example, the Outlook week recipe checks the calendar view and reads the event rows. On the next run, it reads the events Outlook shows then and returns them as JSON. There is no model call to find the controls, decide what to do next, or read the result.
+
+A workflow built from recipes and local transforms runs the same way. **A workflow calls ChatGPT only when it reaches a model step**, such as filtering canceled events in the calendar preview. The calendar reads and the comparison still run in the extension. [Outlook read recipe](https://github.com/open-horizon-labs/browser-recipes-catalog/blob/main/adapters/outlook/recipes/read-calendar-week.json) · [Calendar workflow](docs/calendar-sync.md)
+
 ## Examples
 
 ### Read Outlook events from the shell
