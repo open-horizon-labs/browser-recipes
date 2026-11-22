@@ -22,3 +22,9 @@ li, .actions { display: flex; align-items: center; flex-wrap: wrap; justify-cont
 
 #origins details { width: 100%; }
 #origins details label { display: block; }
+
+.recipe-editor { margin-block: .75rem; }
+.recipe-editor fieldset { display: grid; gap: .5rem; border: 0; padding: 0; min-width: 0; }
+.recipe-editor button, .recipe-editor select { justify-self: start; max-width: 100%; }
+.recipe-editor pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 18rem; overflow: auto; }
+.recipe-editor pre:empty, .recipe-editor p:empty, .recipe-editor [hidden] { display: none; }

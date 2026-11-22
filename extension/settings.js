@@ -22,7 +22,22 @@ export async function getWorkflows() {
   return (await installedBundle()).workflows;
 }
 
-export async function assertWorkflowModelAccess(workflow, step, results) {
+export async function assertRecipeModelAccess(adapterId) {
+  const adapters = await getCatalog();
+  const {blockedModelOrigins = []} = await chrome.storage.local.get('blockedModelOrigins');
+  await checkModelOrigins(adapters.find(item => item.id === adapterId), blockedModelOrigins);
+}
+
+async function checkModelOrigins(adapter, blocked) {
+  if (!adapter) throw new Error('The adapter is no longer installed.');
+  for (const origin of operationOrigins(adapter)) {
+    if (blocked.includes(origin) || !await hasOrigin(chrome,origin)) {
+      throw new Error('This request needs permission to include data from ' + origin + ' in an AI prompt. Check Site access in Settings.');
+    }
+  }
+}
+
+export async function assertWorkflowModelAccess(workflow, step, results, currentAdapterId) {
   const bundle = await installedBundle();
   const current = bundle.workflows.find(item => item.id === workflow.id);
   if (JSON.stringify(current) !== JSON.stringify(workflow)) throw new Error('The workflow changed. Reload it before sharing data.');
@@ -41,13 +56,11 @@ export async function assertWorkflowModelAccess(workflow, step, results) {
   const {blockedModelOrigins = []} = await chrome.storage.local.get('blockedModelOrigins');
   for (const item of workflow.steps.filter(s => sources.has(s.id) && s.op === 'recipe')) {
     const role = workflow.tabs[item.tab];
-    const recorded = results?.get(item.id)?.audit?.adapterId;
+    const recorded = (item.id === step.id && currentAdapterId) || results?.get(item.id)?.audit?.adapterId;
     const candidates = roleAdapters(role);
     if (recorded && !candidates.includes(recorded)) throw new Error('Saved results belong to an unknown adapter.');
     for (const id of recorded ? [recorded] : candidates) {
-      for (const origin of operationOrigins(bundle.adapters.find(adapter => adapter.id === id))) {
-        if (blockedModelOrigins.includes(origin) || !await hasOrigin(chrome,origin)) throw new Error('This workflow needs permission to include data from ' + origin + ' in an AI prompt. Check Site access in Settings.');
-      }
+      await checkModelOrigins(bundle.adapters.find(adapter => adapter.id === id), blockedModelOrigins);
     }
   }
 }

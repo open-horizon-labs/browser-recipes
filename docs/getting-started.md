@@ -49,6 +49,12 @@ Leave **Developer tools** off. You can leave the **Run recipes from the terminal
 
 To see what else you can run, open the app README in the [catalog](https://github.com/open-horizon-labs/browser-recipes-catalog/tree/main/adapters). For a task that uses two apps, follow [Copy Outlook events to Google Calendar](calendar-sync.md).
 
+## Filter recipe results or change inputs
+
+Sign in under **Workflows → ChatGPT connection**. In the Recipes panel, open **Filter or change inputs with ChatGPT** before running a recipe, or **Filter or change outputs with ChatGPT** after it finishes. Describe which list entries to remove or which field values to change. Review the request, send it, then accept the proposed values if they match your instructions. You can save separate default instructions for inputs and outputs. Each send and acceptance is still explicit.
+
+In Workflows, enable **Review each recipe’s inputs and outputs for optional ChatGPT edits** to pause between recipes. You can pass the original output along unchanged. The editor sends text and structured fields and omits attachment bytes. Workflow steps intended for document analysis have their own attachment selection.
+
 ## Use a desktop chat or script
 
 Claude or ChatGPT Desktop can walk you through the steps above while you use the panel. To let an agent run recipes itself, give it a terminal on the Linux desktop where the browser is open. An ordinary chat has no built-in Browser Recipes connector. For an installed workflow with an agent step, open **Workflows** and use **Sign in with ChatGPT**. The same connection powers the Guide. [Set up the connection](chatgpt-agent.md)

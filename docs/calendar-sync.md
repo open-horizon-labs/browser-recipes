@@ -17,6 +17,12 @@ Use this catalog workflow to mark Outlook meetings as **Busy** on a Google calen
 
 ![A test week with one missing Outlook block available for selection](images/getting-started/calendar-review.png)
 
+## Filter or change events with your own instructions
+
+Before reading Outlook, check **Review each recipe’s inputs and outputs for optional ChatGPT edits**. Run the Outlook read, then open **Filter or change outputs with ChatGPT**. For example, enter “Remove events whose title starts with FYI. Change the remaining meeting titles to Busy in both the text and the event labels.” Choose **Review request**, check the data, and send it. Compare the proposal with the original. Choose **Use proposed outputs** and then **Continue with these outputs** to pass the edited week to the next step. The meetings in Outlook stay as they were.
+
+For a recipe that takes inputs, the same controls appear before it runs. Applying a proposed input fills in the reviewed values. You still choose whether to execute the recipe.
+
 ## Import the blocks you approve
 
 1. Check the missing blocks you want and choose **Use selected items**. Titles default to **Busy**. Enable **Copy event titles to Google Calendar** if you want the reviewed meeting names. Run the file preparation step.

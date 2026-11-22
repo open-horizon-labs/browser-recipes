@@ -1,3 +1,5 @@
+import {recipeEditor} from './recipe-edit-ui.js';
+import {assertRecipeModelAccess} from './settings.js';
 const form = document.querySelector('#runner');
 const controls = document.querySelector('#controls');
 const tabPicker = document.querySelector('#tab');
@@ -83,6 +85,12 @@ function updateInputs() {
     fields.push({ name, attachment, control, required: definition.required === true });
     inputFields.append(group);
   }
+  if (fields.some(field => !field.attachment)) {
+    inputFields.append(recipeEditor({phase:'inputs', key:recipe.key, authorize:() => assertRecipeModelAccess(recipe.adapterId),
+      read:() => Object.fromEntries(fields.filter(f => !f.attachment).map(f => [f.name,f.control.value])),
+      apply:value => { for (const f of fields.filter(f => !f.attachment)) f.control.value = value[f.name]; }}));
+  }
+
 }
 
 function updateRecipes() {
@@ -193,7 +201,13 @@ form.addEventListener('submit', async event => {
   try {
     const inputs = await gatherInputs();
     const { outputs, runId } = await request('run', { tabId, adapterId: recipe.adapterId, recipeId: recipe.id, inputs });
-    renderOutput(outputs);
+    function display(value) {
+      clearResults();
+      renderOutput(value);
+      output.append(recipeEditor({phase:'outputs', key:recipe.key, read:() => value,
+        authorize:() => assertRecipeModelAccess(recipe.adapterId), apply:display}));
+    }
+    display(outputs);
     choose(`${recipe.title} completed on tab ${tabId}. Run ${runId}.`);
   } catch (error) {
     choose(error.message, true);

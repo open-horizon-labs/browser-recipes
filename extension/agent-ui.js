@@ -1,3 +1,4 @@
+import {recipeEditor} from './recipe-edit-ui.js';
 import { chatgptAgentRequest } from './chatgpt-agent-transport.js';
 import { assertConnectorSharingAllowed, runConnector } from './connector.js';
 import { agentDocumentInputs, reviewedDocumentInputs } from './workflow-documents.js';
@@ -19,6 +20,7 @@ const savedPrefix = 'workflow-saved-';
 const checkpointPrefix = 'workflow-write-';
 const writeCheckpoints = new Map();
 let workflowRunId = crypto.randomUUID();
+let pendingOutput;
 let rolesLocked = false;
 let restored = false;
 let inspected;
@@ -81,6 +83,7 @@ function roleSelected() {
 }
 
 function updateControls() {
+  el('review-recipes').disabled = busy || Boolean(pendingOutput);
   el('workflow').disabled = busy || !workflows.length;
   el('refresh').disabled = busy;
   el('reset').disabled = busy;
@@ -190,6 +193,7 @@ function renderSteps() {
       const { value, audit } = results.get(step.id);
       item.append(details('View result', node('pre', preview(value))));
       if (audit?.prompt) item.append(details(audit.sent ? 'View sent prompt' : 'View prepared prompt', node('pre', audit.prompt)));
+      if (audit && Object.hasOwn(audit,'originalOutputs')) item.append(details('Original recipe outputs',node('pre',preview(audit.originalOutputs))));
       if (audit?.runId) item.append(node('small', `Run ${audit.runId}`));
     }
     list.append(item);
@@ -226,6 +230,15 @@ async function allowModelShare(step) {
 }
 
 function saveStep(step, value, fields = {}, selected = [], audit) {
+  if (step.op === 'recipe' && el('review-recipes').checked) {
+    rolesLocked = true;
+    pendingOutput = {value,fields,selected,audit};
+    return;
+  }
+  finishStep(step,value,fields,selected,audit);
+}
+
+function finishStep(step, value, fields, selected, audit) {
   results.set(step.id, { value, fields, selected, audit, sources: [...connectorSources(step)] });
   clearGuideRequest();
   rolesLocked = true;
@@ -249,7 +262,7 @@ async function runRecipe(step, inputs, fields = {}) {
 }
 
 function canAdvance(step) {
-  if (!step || Object.keys(step.fields ?? {}).length) return false;
+  if (!step || Object.keys(step.fields ?? {}).length || (step.op === 'recipe' && el('review-recipes').checked)) return false;
   return (step.op === 'recipe' && step.effect === 'read') || (step.op === 'transform' && !step.select);
 }
 
@@ -342,6 +355,7 @@ function renderRepeat(step, inputs, mount) {
   }
 
   if (canWrite(status)) {
+    inputEditor(step,mount,inputsForItem,readFields);
     mount.append(button('write-item', 'Run this item', () => void act('Writing the selected item…', async () => {
       const fields = readFields();
       return await lockedCheckpoint(key, async storedNow => {
@@ -391,16 +405,54 @@ function renderRepeat(step, inputs, mount) {
   })));
 }
 
+function editRecipe(step, phase, read, apply) {
+  const tab = tabs.find(item => item.tabId === selectedTabs.get(step.tab));
+  const adapterId = roleAdapters(workflow.tabs[step.tab]).find(id => tab?.adapterIds.includes(id));
+  return recipeEditor({phase, key:JSON.stringify([workflow.id,step.id,adapterId]), read, apply,
+    authorize:() => assertWorkflowModelAccess(workflow,step,results,pendingOutput?.audit?.adapterId ?? adapterId)});
+}
+
+function inputEditor(step, mount, inputs, readFields) {
+  if (!el('review-recipes').checked || !Object.keys({...inputs,...step.fields}).length) return;
+  mount.append(editRecipe(step, 'inputs', () => ({...inputs,...readFields()}), edited => {
+    for (const key of Object.keys(inputs)) inputs[key] = edited[key];
+    for (const [key,spec] of Object.entries(step.fields ?? {})) {
+      const control = el('field-' + key);
+      if (spec.type === 'checkbox') control.checked = edited[key];
+      else control.value = edited[key];
+    }
+    mount.append(details('Approved recipe inputs', node('pre',preview(edited))));
+  }));
+}
+
+function reviewOutput(step, mount) {
+  const output = pendingOutput;
+  mount.append(node('h4','Review recipe outputs'), node('pre',preview(output.value)));
+  mount.append(editRecipe(step,'outputs',() => output.value, edited => {
+    output.audit ??= {};
+    if (!Object.hasOwn(output.audit,'originalOutputs')) output.audit.originalOutputs = output.value;
+    output.value = edited;
+    render();
+  }));
+  mount.append(button('continue-output','Continue with these outputs',() => {
+    pendingOutput = undefined;
+    finishStep(step,output.value,output.fields,output.selected,output.audit);
+    report(afterStep());
+  },true));
+}
+
 function renderRecipe(step, inputs, mount) {
   const tabId = selectedTabs.get(step.tab);
   const role = workflow.tabs[step.tab];
   mount.append(node('p', `${role.label} · tab ${tabId}`));
+  if (pendingOutput) { reviewOutput(step,mount); return; }
   if (step.repeat) {
     renderRepeat(step, inputs, mount);
     return;
   }
   if (Object.keys(inputs).length) mount.append(details('Review recipe inputs', node('pre', preview(inputs))));
   const readFields = fieldsFor(step, mount);
+  inputEditor(step,mount,inputs,readFields);
   mount.append(button('execute-step', step.effect === 'write' ? step.label : 'Run this step', () => {
     void act(`Running ${step.label}…`, async () => {
       await runRecipe(step, inputs, readFields());
@@ -646,7 +698,7 @@ function render() {
   const root = el('current');
   root.replaceChildren();
   el('reset').hidden = index === 0;
-  el('save-results').hidden = index === 0;
+  el('save-results').hidden = index === 0 && !pendingOutput;
   const step = workflow.steps[index];
   if (!step) {
     root.append(node('p', 'All workflow steps are complete.', { tabindex: '-1' }));
@@ -678,7 +730,10 @@ function render() {
   updateControls();
 }
 
+el('review-recipes').addEventListener('change',render);
+
 function selectWorkflow() {
+  pendingOutput = undefined;
   el('workflow-failure').hidden = true;
   el('workflow-failure-log').value = '';
   resetGuide();
@@ -863,6 +918,8 @@ function restore(snapshot) {
   workflowRunId = snapshot.runId ?? crypto.randomUUID();
   for (const [id, entry] of snapshot.results) results.set(id, entry);
   index = results.size;
+  pendingOutput = snapshot.pendingOutput;
+  if (pendingOutput) el('review-recipes').checked = true;
   restored = true;
   render();
   return 'Saved results restored.';
@@ -946,6 +1003,7 @@ el('save-results').addEventListener('click', () => {
       definition: JSON.stringify(workflow),
       runId: workflowRunId,
       results: [...results],
+      ...(pendingOutput ? {pendingOutput} : {}),
       timestamp: new Date().toISOString(),
     };
     try {
@@ -1019,6 +1077,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 el('workflow').addEventListener('change', selectWorkflow);
 el('refresh').addEventListener('click', () => void act('Finding workflows and approved tabs…', refresh));
 el('reset').addEventListener('click', () => {
+  pendingOutput = undefined;
   resetGuide();
   workflowRunId = crypto.randomUUID();
   index = 0;

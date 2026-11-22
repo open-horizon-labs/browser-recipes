@@ -81,6 +81,7 @@ export async function verifyWorkflows(context) {
   await verifyHeadlines(context);
   await context.fixtures.reconnect();
   await verifyGuide(context);
+  await verifyRecipeEdits(context);
 }
 
 async function selectWorkflow(page, id) {
@@ -264,5 +265,64 @@ async function verifyGuide({ browser, extensionOrigin, fixtures }) {
     assert.deepEqual(await fixtures.commands(), [...before,'status','models','plan','plan']);
   } finally {
     await runner.close();
+  }
+}
+
+async function verifyRecipeEdits({browser,extensionOrigin,fixtures,active}) {
+  const source = await browser.newPage();
+  const dest = await browser.newPage();
+  const runner = await browser.newPage();
+  try {
+    await source.goto(fixtures.source.origin + '/week');
+    await dest.goto(fixtures.destination.origin + '/calendar/u/1/r/week');
+    await runner.goto(extensionOrigin + '/agent.html');
+    await selectWorkflow(runner,'outlook-to-google-calendar');
+    const front = await active();
+    await runner.locator('#tab-source').selectOption({index:1});
+    await runner.locator('#tab-destination').selectOption({index:1});
+    await runner.locator('#review-recipes').check();
+    await runner.locator('#execute-step').click();
+    const current = runner.locator('#current');
+    await current.getByText('Filter or change outputs with ChatGPT').click();
+    await current.getByLabel('Instructions for these outputs').fill('Remove the second fixture event and rename the first.');
+    await current.getByText('Review request',{exact:true}).click();
+    await current.getByText('Send edit request to ChatGPT').click();
+    await current.getByText('Use proposed outputs').click();
+    await runner.locator('#continue-output').click();
+    await runner.locator('#execute-step').click();
+    await runner.locator('#continue-output').click();
+    await runner.locator('#advance').click();
+    const reviewed = JSON.parse(await runner.locator('#review-inputs').inputValue());
+    assert.equal(reviewed.outlook.events.length,1);
+    assert.equal(reviewed.outlook.events[0].text,'Edited fixture event');
+    await runner.goto(extensionOrigin + '/runner.html');
+    const tabId = await runner.evaluate(async () => (await chrome.runtime.sendMessage({command:'tabs',args:{}})).result.find(t => t.adapterIds.includes('workshop')).tabId);
+    await runner.locator('#tab').selectOption(String(tabId));
+    await runner.locator('#recipe').selectOption('workshop/runner-upload');
+    const inputs = runner.locator('#inputs');
+    const message = inputs.getByLabel('message',{exact:true});
+    await message.fill('Original');
+    await inputs.getByText('Filter or change inputs with ChatGPT').click();
+    await inputs.getByLabel('Instructions for these inputs').fill('Change the fixture message to Edited.');
+    await inputs.getByText('Review request',{exact:true}).click();
+    await inputs.getByText('Send edit request to ChatGPT').waitFor();
+    const requests = await fixtures.commands();
+    const origin = await runner.evaluate(async () => {
+      const {result} = await chrome.runtime.sendMessage({command:'runner.list',args:{}});
+      return result.catalog.find(adapter => adapter.id === 'workshop').origin;
+    });
+    await runner.evaluate(origin => chrome.storage.local.set({blockedModelOrigins:[origin]}),origin);
+    await inputs.getByText('Send edit request to ChatGPT').click();
+    await inputs.getByRole('status').getByText(/needs permission/).waitFor();
+    assert.deepEqual(await fixtures.commands(),requests);
+    await runner.evaluate(() => chrome.storage.local.remove('blockedModelOrigins'));
+    await inputs.getByText('Send edit request to ChatGPT').click();
+    await inputs.getByText('Use proposed inputs').waitFor();
+    assert.equal(await message.inputValue(),'Original');
+    await inputs.getByText('Use proposed inputs').click();
+    assert.equal(await message.inputValue(),'Edited');
+    assert.equal(await active(),front);
+  } finally {
+    await Promise.all([source.close(),dest.close(),runner.close()]);
   }
 }

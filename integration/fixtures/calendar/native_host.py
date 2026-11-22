@@ -28,6 +28,10 @@ def main():
             error = {"code": "SESSION_EXPIRED", "message": "The ChatGPT session expired or was disconnected. Sign in again."}
         elif args["model"] == "fixture-model" and "Which tab should I select?" in args["prompt"]:
             result = {"text": json.dumps({"answer": "Choose the tab with the news page.", "actions": ["choose-tab"]})}
+        elif "Remove the second fixture event and rename the first." in args["prompt"]:
+            result = {"text": json.dumps([{"op":"remove","path":["events",1]}, {"op":"replace","path":["events",0,"text"],"value":"Edited fixture event"}])}
+        elif "Change the fixture message to Edited." in args["prompt"]:
+            result = {"text": json.dumps([{"op":"replace","path":["message"],"value":"Edited"}])}
         elif args["model"] != "fixture-model" or "Reviewed workshop" not in args["prompt"] or "destination-1" not in args["prompt"]:
             result = None
         else:
