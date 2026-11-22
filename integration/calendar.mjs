@@ -298,6 +298,7 @@ async function verifyRecipeEdits({browser,extensionOrigin,fixtures,active}) {
     assert.equal(reviewed.outlook.events[0].text,'Edited fixture event');
     await runner.goto(extensionOrigin + '/runner.html');
     const tabId = await runner.evaluate(async () => (await chrome.runtime.sendMessage({command:'tabs',args:{}})).result.find(t => t.adapterIds.includes('workshop')).tabId);
+    await runner.locator('#recipe-setup summary').click();
     await runner.locator('#tab').selectOption(String(tabId));
     await runner.locator('#recipe').selectOption('workshop/runner-upload');
     const inputs = runner.locator('#inputs');
@@ -353,7 +354,7 @@ async function verifySharedCalendarPreview({browser, extensionOrigin, fixtures, 
     await runner.goto(extensionOrigin + '/runs.html#' + run.runId);
     const countPlans = async () => (await fixtures.commands()).filter(command => command === 'plan').length;
     const before = await countPlans();
-    await runner.getByRole('button',{name:'Review model request'}).click();
+    await runner.getByRole('button',{name:'Review what goes to ChatGPT'}).click();
     const data = runner.getByLabel('Data to share (JSON)',{exact:true});
     await data.fill((await data.inputValue()).replaceAll('Workshop','Reviewed workshop'));
     await runner.getByRole('option',{name:'Fixture model'}).waitFor({state:'attached'});

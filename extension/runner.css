@@ -29,3 +29,19 @@ button:disabled { opacity: .55; cursor: default; }
 
 #read-list { display: grid; gap: .35rem; max-height: 14rem; overflow: auto; margin: .5rem 0; }
 #read-list button { text-align: start; }
+
+.recipe-search { display: flex; align-items: center; gap: .55rem; color: var(--muted); }
+.recipe-search input { flex: 1; min-width: 0; }
+body #read-list { gap: 0; background: var(--surface); border-radius: .5rem; max-height: 17rem; }
+body #read-list button { border: 0; border-radius: 0; border-block-end: 1px solid var(--line); padding: .65rem .75rem; font-weight: 620; }
+body #read-list button:focus-visible { outline-offset: -3px; }
+#recipe-setup form { margin-top: 1rem; }
+.tab-field { grid-template-columns: minmax(0, 1fr); }
+#runner-status:empty { display: none; }
+#results:not([hidden]) { background: var(--surface); padding: .8rem; border-radius: .5rem; }
+@media (prefers-reduced-motion: no-preference) {
+  #results:not([hidden]) { animation: reveal-result .25s cubic-bezier(.2,.8,.2,1); }
+  @keyframes reveal-result { from { background-color: var(--soft); } }
+}
+#read-list button span, #read-list button small { display: block; }
+#read-list button small { margin-top: .12rem; font-weight: 450; }

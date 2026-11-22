@@ -1,3 +1,4 @@
+import {watchTabs} from './watch-tabs.js';
 import {recipeEditor} from './recipe-edit-ui.js';
 import { chatgptAgentRequest } from './chatgpt-agent-transport.js';
 import { assertConnectorSharingAllowed, runConnector } from './connector.js';
@@ -115,7 +116,6 @@ function updateControls() {
   el('launch').hidden = !workflow || index > 0 || Boolean(pendingOutput);
   el('start-run').disabled = busy || !workflow || !Object.values(workflow.tabs).every(roleGranted);
   el('workflow').disabled = busy || !workflows.length;
-  el('refresh').disabled = busy;
   el('reset').disabled = busy;
   el('save-results').disabled = busy;
   for (const button of el('history-items').querySelectorAll('button')) button.disabled = busy;
@@ -137,7 +137,7 @@ function updateControls() {
   el('guide-status').textContent = !workflow
     ? 'Choose an installed workflow to see the actions available.'
     : !step ? 'The workflow is complete. Review the results or start over.'
-      : !roleSelected() ? 'Choose an approved tab for each role.'
+      : !roleSelected() ? 'Choose a tab for each app.'
         : canAdvance(step) ? 'Run the available preparation steps. The workflow will stop for review.'
           : step.op === 'agent' ? 'Review the data and attachments before running the model step.'
             : step.op === 'recipe' && step.effect === 'write' ? 'Review the recipe inputs and the destination tab before running this step.'
@@ -201,7 +201,7 @@ function renderRoles() {
     const choices = tabs.filter(tab => roleAdapters(role).some(id => tab.adapterIds.includes(id)));
     const picker = node('select');
     picker.append(new Option(choices.length ? 'Choose a tab' : 'No approved tabs open', ''));
-    for (const tab of choices) picker.append(new Option(`${tab.title || role.label} · tab ${tab.tabId}`, tab.tabId));
+    for (const tab of choices) picker.append(new Option(`${tab.title || role.label}`, tab.tabId));
     picker.value = String(selectedTabs.get(id) ?? '');
     if (picker.selectedIndex < 0) picker.selectedIndex = 0;
     picker.addEventListener('change', () => {
@@ -231,7 +231,7 @@ function renderRoles() {
       continue;
     }
     if (!choices.length) {
-      const note = node('small', 'Start the workflow to open the app when prompted, or open an approved tab and refresh.');
+      const note = node('small', 'Start the workflow for help opening the app.');
       note.id = 'tab-hint-' + id;
       picker.setAttribute('aria-describedby', note.id);
       group.append(note);
@@ -309,7 +309,7 @@ async function executeRecipe(step, inputs, fields = {}, recipeId = step.recipeId
   const tabId = selectedTabs.get(step.tab);
   const target = tabs.find(tab => tab.tabId === tabId);
   const adapterId = roleAdapters(workflow.tabs[step.tab]).find(id => target?.adapterIds.includes(id));
-  if (!adapterId) throw new Error("The selected tab no longer matches its adapter.");
+  if (!adapterId) throw new Error("The tab left the app. Choose another tab.");
   const interactiveInputs = Object.fromEntries(Object.entries(fields).map(([id, value]) => [id, String(value)]));
   await beginInteractive();
   return { ...await request('run', { tabId, adapterId, recipeId, parentRunId: workflowRunId, parentStepId: step.id, inputs: { ...inputs, ...interactiveInputs } }), adapterId };
@@ -537,12 +537,12 @@ function renderHandoff(step, inputs, mount) {
   if (step.tab) {
     mount.append(node('p', `${workflow.tabs[step.tab].label} · tab ${selectedTabs.get(step.tab)}`));
   }
-  if (Object.keys(inputs).length) mount.append(details('Review handoff inputs', node('pre', preview(inputs))));
+  if (Object.keys(inputs).length) mount.append(details('Review details', node('pre', preview(inputs))));
   const readFields = fieldsFor(step, mount);
   const reply = node('textarea', undefined, { rows: 3, spellcheck: 'false' });
   mount.append(details('Record a result', field(`handoff-${step.id}`, 'Result (JSON)', reply)));
-  mount.append(button('complete-handoff', 'Continue after handoff', () => {
-    void act('Recording the handoff…', async () => {
+  mount.append(button('complete-handoff', 'Continue', () => {
+    void act('Saving your response…', async () => {
       saveStep(step, reply.value.trim() ? parseReply(reply.value) : null, readFields());
       return afterStep();
     }, true);
@@ -648,7 +648,7 @@ function renderAgent(step, inputs, mount) {
         if (checkbox.checked) selectedAttachments.add(index + 1);
         else selectedAttachments.delete(index + 1);
       });
-      files.append(label, button(`download-agent-file-${index}`, 'Download for manual handoff', () => {
+      files.append(label, button(`download-agent-file-${index}`, 'Download attachment', () => {
         const bytes = Uint8Array.from(atob(document.base64), character => character.charCodeAt(0));
         const url = URL.createObjectURL(new Blob([bytes], { type: document.mimeType }));
         node('a', undefined, { href: url, download: document.name }).click();
@@ -704,7 +704,7 @@ ${extra}` : base,
     return afterStep();
   }
   const mode = node('select');
-  mode.append(new Option('Sign in with ChatGPT', 'chatgpt'), new Option('Manual chat handoff', 'manual'));
+  mode.append(new Option('Sign in with ChatGPT', 'chatgpt'), new Option('Copy to another chat', 'manual'));
   mount.append(field('agent-mode', 'Agent response mode', mode));
   const model = node('select');
   model.addEventListener('change', () => { chosenModel = model.value; renderModel(); });
@@ -862,7 +862,7 @@ async function refresh() {
     requestedWorkflow = null;
     selectWorkflow();
   }
-  return workflows.length ? '' : 'Install a workflow catalog in Settings, then refresh.';
+  return workflows.length ? '' : 'Install a workflow from Settings.';
 }
 
 async function setAccount(state) {
@@ -917,7 +917,7 @@ function guideState() {
 
 function currentGuide() {
   if (!pendingGuide || pendingGuide.signature !== JSON.stringify(guideState())) {
-    throw new Error('Review a fresh Guide payload for the current step.');
+    throw new Error('Review a new question for this step.');
   }
   return pendingGuide;
 }
@@ -958,14 +958,14 @@ el('guide-mode').addEventListener('change', event => {
   el('guide-manual').hidden = event.target.value !== 'manual';
 });
 el('guide-question').addEventListener('input', clearGuideRequest);
-el('prepare-guide').addEventListener('click', () => void act('Preparing the Guide payload…', async () => {
+el('prepare-guide').addEventListener('click', () => void act('Preparing your question…', async () => {
   const state = guideState();
   const question = el('guide-question').value.trim();
   const prompt = guidePrompt({ ...state, question, history: guideConversation });
   pendingGuide = { question, prompt, actions: state.actions, stepId: state.stepId, runId: state.runId, signature: JSON.stringify(state) };
   el('guide-prompt').value = prompt;
   el('guide-request').hidden = false;
-  return 'Review the exact payload before sending or copying it.';
+  return 'Check the question and context before sending.';
 }));
 el('ask-guide').addEventListener('click', () => void act('Waiting for the Guide…', async () => {
   const draft = currentGuide();
@@ -1193,7 +1193,23 @@ el('workflow').addEventListener('change', () => {
   if (discardReview()) selectWorkflow();
   else el('workflow').value = workflow.id;
 });
-el('refresh').addEventListener('click', () => void act('Finding workflows and approved tabs…', refresh));
+let updatingTabs = false;
+watchTabs(async () => {
+  updatingTabs = true;
+  try {
+    const data = await request('runner.list');
+    const nextApproved = new Set(data.catalog.map(a => a.id));
+    if (JSON.stringify(tabs) === JSON.stringify(data.tabs) &&
+        nextApproved.size === approved.size && [...nextApproved].every(id => approved.has(id))) return;
+    tabs = data.tabs;
+    approved = nextApproved;
+    renderDevTabs(data.catalog);
+    renderRoles();
+    updateControls();
+  } catch (error) {
+    report(error.message,true);
+  } finally { updatingTabs = false; }
+}, () => busy || updatingTabs);
 el('reset').addEventListener('click', () => {
   if (!discardReview()) return;
   pendingOutput = undefined;

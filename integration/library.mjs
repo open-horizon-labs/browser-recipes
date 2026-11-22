@@ -69,10 +69,10 @@ try {
   await adapterList.getByText('Wire · 1 recipe',{exact:true}).waitFor();
   await page.getByRole('button',{name:'Wire digest is installed'}).waitFor();
   await page.getByLabel('Search catalog').fill('');
-  await page.getByLabel('Definition type',{exact:true}).selectOption('recipe');
+  await page.getByLabel('Show',{exact:true}).selectOption('recipe');
   await page.getByRole('button',{name:'Install Read archives'}).click();
   await adapterList.getByText('Wire · 2 recipes',{exact:true}).waitFor();
-  await page.getByLabel('Definition type',{exact:true}).selectOption('adapter');
+  await page.getByLabel('Show',{exact:true}).selectOption('adapter');
   await page.getByRole('button',{name:'Wire is installed'}).waitFor();
   await page.getByRole('button',{name:'Grant access for https://wire.example'}).waitFor();
   other.title = 'Wire service';

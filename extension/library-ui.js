@@ -125,7 +125,7 @@ export async function initializeLibrary(refreshSettings) {
       for (const r of a.recipes) {
         const contract = recipeContract(r);
         const recipe = details(r.title);
-        recipe.append(element('p',contract.kind + ' · ' + contract.effect),
+        recipe.append(element('p',contract.effect === 'write' ? 'Changes data in the app' : 'Reads from the app'),
           element('p','Inputs: ' + (Object.keys(contract.inputs).join(', ') || 'None')),
           element('p','Outputs: ' + (contract.outputs.join(', ') || 'None')));
         if (editable) removal(recipe,'recipe',r,a.id);
@@ -154,7 +154,7 @@ export async function initializeLibrary(refreshSettings) {
       if (editable) removal(panel,'adapter',a);
       adapters.append(panel);
     }
-    if (!all.adapters.length) adapters.append(element('p','No adapters installed.'));
+    if (!all.adapters.length) adapters.append(element('p','Install a recipe from the community catalog.'));
     for (const w of all.workflows) {
       const panel = details(w.title);
       if (w.description) panel.append(element('p',w.description));

@@ -11,7 +11,7 @@ const names = {
   canceled: 'Cancelled', failed: 'Failed', pending: 'Pending', skipped: 'Skipped',
 };
 const tagNames = { 'edit-inputs':'Review inputs', 'edit-outputs':'Review outputs', fields: 'Input needed', selection: 'Selection needed', write: 'Write approval',
-  'uncertain-write': 'Check a write', agent: 'Review model request', handoff: 'Human handoff', auth:'Sign-in needed', 'open-app':'App tab needed', 'account-review':'Check account', 'background-tab':'Switch tabs', 'interrupt-check':'Check destination' };
+  'uncertain-write': 'Check a write', agent: 'Review what goes to ChatGPT', handoff: 'Needs your input', auth:'Sign-in needed', 'open-app':'Open the app', 'account-review':'Check account', 'background-tab':'Switch tabs', 'interrupt-check':'Check the result' };
 let records = [];
 let busy = false;
 let view = 0;
@@ -267,7 +267,7 @@ async function renderPending(record, parent) {
     return;
   }
   if (type === 'agent') {
-    controls.append(action('Review model request', async () => {
+    controls.append(action('Review what goes to ChatGPT', async () => {
       const editor = node('div');
       await renderModelAction(editor, record, context, resume);
       controls.replaceChildren(editor);
@@ -327,7 +327,7 @@ async function renderPending(record, parent) {
   } else if (type === 'handoff') {
     const reply = node('textarea'); reply.rows = 3;
     controls.append(field('Handoff result (optional JSON)', reply));
-    primary('Mark handoff complete', () => reply.value.trim() ? {value: parseJson(reply.value)} : {});
+    primary('Continue', () => reply.value.trim() ? {value: parseJson(reply.value)} : {});
   } else controls.append(node('p','Refresh the run to check for an available action.'));
 }
 async function renderRecord(record) {
@@ -388,7 +388,7 @@ async function renderRecord(record) {
       result.replaceChildren();
       const outputs = data.result ?? data.entries;
       if (outputs != null && (typeof outputs !== 'object' || Object.keys(outputs).length)) showOutputs(outputs, result);
-      else result.append(node('p','Only the run record is available. Result data was not retained.'));
+      else result.append(node('p','This run has no saved results.'));
     }));
     group.append(result);
   }
@@ -400,7 +400,7 @@ async function renderRecord(record) {
   }
   if (!record.parentRunId && ['completed','cancelled','failed','interrupted'].includes(record.status)) {
     group.append(action('Delete run record', async () => {
-      if (!confirm('Delete this run, its child recipe records and any retained results from this browser?')) return;
+      if (!confirm('Delete this run, its recipe history, and its saved results?')) return;
       await request('runs.forget', {runId:record.runId});
       location.hash = '';
     }));

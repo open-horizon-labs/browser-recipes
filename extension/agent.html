@@ -8,14 +8,14 @@
   <link rel="stylesheet" href="agent.css">
   <script type="module" src="agent-ui.js"></script>
 </head>
-<body>
+<body class="page-workflows">
   <main>
-    <header>
-      <h1>Workflows</h1>
-      <nav aria-label="Browser Recipes">
-        <a href="runner.html">Recipes</a>
-        <a href="runs.html">Runs</a>
-        <a href="options.html" target="_blank" rel="noopener">Settings</a>
+    <header class="app-header"><h1>Workflows</h1>
+      <nav class="app-nav" aria-label="Browser Recipes">
+        <a href="runner.html"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>Recipes</span></a>
+        <a href="agent.html" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M12 8v4m-6 4v-4h12v4"/></svg><span>Workflows</span></a>
+        <a href="runs.html"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg><span>Runs</span></a>
+        <a href="options.html"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="10" cy="18" r="2"/></svg><span>Settings</span></a>
       </nav>
     </header>
     <section aria-labelledby="workflow-heading">
@@ -27,13 +27,12 @@
       </div>
       <p id="description" hidden></p>
       <div id="roles"></div>
-      <button id="refresh" type="button">Refresh tabs</button>
       <p id="status" role="status" aria-live="polite"></p>
-      <label id="review-choice" class="retain" hidden><input id="review-recipes" type="checkbox"> Review recipe inputs and outputs for optional ChatGPT edits</label>
+      <label id="review-choice" class="retain" hidden><input id="review-recipes" type="checkbox"> Review inputs and results with ChatGPT</label>
       <div id="launch" hidden>
-        <label class="retain"><input id="retain-results" type="checkbox"> Keep results for this browser session</label>
+        <label class="retain"><input id="retain-results" type="checkbox"> Keep results until the browser closes</label>
         <button id="start-run" class="primary" type="button">Start workflow</button>
-        <p>Follow progress in Runs. The workflow pauses when it needs your input.</p>
+        <p>Open Runs to see progress or respond when the workflow pauses.</p>
         <div id="launch-result" hidden></div>
       </div>
     </section>
@@ -44,20 +43,20 @@
       <label class="workflow-field" for="guide-question">Ask about this workflow
         <textarea id="guide-question" rows="2" maxlength="500"></textarea>
       </label>
-      <button type="button" id="prepare-guide">Review Guide payload</button>
+      <button type="button" id="prepare-guide">Review question</button>
       <div id="guide-request" hidden>
         <label class="workflow-field" for="guide-prompt">Exact prompt
           <textarea id="guide-prompt" rows="7" readonly></textarea>
         </label>
-        <label class="workflow-field" for="guide-mode">Guide response mode
+        <label class="workflow-field" for="guide-mode">How to ask
           <select id="guide-mode">
             <option value="chatgpt">Sign in with ChatGPT</option>
-            <option value="manual">Manual chat handoff</option>
+            <option value="manual">Copy to another chat</option>
           </select>
         </label>
         <div id="guide-online">
-          <label class="workflow-field" for="guide-model">Guide model <select id="guide-model"></select></label>
-          <button type="button" id="ask-guide">Send Guide question</button>
+          <label class="workflow-field" for="guide-model">Model <select id="guide-model"></select></label>
+          <button type="button" id="ask-guide">Send question</button>
         </div>
         <div id="guide-manual" hidden>
           <label class="workflow-field" for="guide-reply">Reply JSON
@@ -77,11 +76,11 @@
       </div>
     </section>
     <details id="workflow-failure" hidden>
-      <summary>Failure details for recipe author</summary>
+      <summary>Failure details</summary>
       <textarea id="workflow-failure-log" readonly rows="10" aria-label="Failure report"></textarea>
     </details>
     <details id="history">
-      <summary>Saved results and step-by-step activity</summary>
+      <summary>Saved activity</summary>
       <p>Run records show which steps ran. Saved results can include private data.</p>
       <button id="refresh-history" type="button">Refresh history</button>
       <button id="clear-history" type="button">Clear history</button>
@@ -99,7 +98,7 @@
       <button id="record-start" type="button">Start recording</button>
       <button id="record-stop" type="button">Stop recording and load draft</button>
       <p id="recording-state" role="status"></p>
-      <label class="workflow-field" for="draft">Draft request (recipe and inputs JSON)
+      <label class="workflow-field" for="draft">Recipe and inputs (JSON)
         <textarea id="draft" rows="6" placeholder='{"recipe":{"id":"draft","title":"Draft","steps":[]},"inputs":{}}'></textarea>
       </label>
       <button id="test-draft" type="button">Run draft on the selected tab</button>

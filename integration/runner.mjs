@@ -20,10 +20,11 @@ export async function verifyRunner({ browser, worker, extensionOrigin, target, a
   try {
     await runner.goto(extensionOrigin + '/runner.html');
     await runner.getByText('Select the tab you want the recipe to use.').waitFor();
+    await runner.getByText('Set up a run',{exact:true}).click();
     const tab = runner.getByLabel('Browser tab');
     const recipe = runner.getByLabel('Recipe', { exact: true });
     assert.equal(await tab.inputValue(), '');
-    assert.equal(await runner.getByRole('button', { name: 'Run recipe' }).isDisabled(), true);
+    assert.equal(await runner.getByRole('button', { name: 'Run here', exact: true }).isDisabled(), true);
     await tab.selectOption({ index: 1 });
     const focusedTabId = await active();
     assert.notEqual(Number(await tab.inputValue()), focusedTabId);
@@ -52,8 +53,16 @@ export async function verifyRunner({ browser, worker, extensionOrigin, target, a
     await runner.getByLabel('file', { exact: true }).setInputFiles({
       name: 'example.txt', mimeType: 'text/plain', buffer: Buffer.from('Hello'),
     });
-    await runner.getByRole('button', { name: 'Refresh tabs' }).click();
-    await runner.getByRole('button', { name: 'Run recipe' }).click();
+    const originalSelection = await tab.inputValue();
+    const extra = await browser.newPage();
+    await extra.goto(new URL('/',target.url()).href);
+    const extraId = await worker.evaluate(async url => (await chrome.tabs.query({url}))[0].id,extra.url());
+    await tab.locator(`option[value="${extraId}"]`).waitFor({state:'attached'});
+    assert.equal(await tab.inputValue(),originalSelection);
+    assert.equal(await runner.getByLabel('message',{exact:true}).inputValue(),'Sent');
+    await extra.close();
+    await tab.locator(`option[value="${extraId}"]`).waitFor({state:'detached'});
+    await runner.getByRole('button', { name: 'Run here', exact: true }).click();
     await runner.getByText('Sent example.txt Hello', { exact: true }).waitFor();
     assert.equal(await target.locator('#receipt').textContent(), 'Sent example.txt Hello');
     assert.equal(await active(), focusedTabId);
@@ -63,7 +72,7 @@ export async function verifyRunner({ browser, worker, extensionOrigin, target, a
 
     await target.goto(new URL('/', target.url()).href);
     await recipe.selectOption('workshop/read-scan');
-    await runner.getByRole('button', { name: 'Run recipe' }).click();
+    await runner.getByRole('button', { name: 'Run here', exact: true }).click();
     await runner.getByText(/TARGET_UNAVAILABLE.*Step 1/).waitFor({ timeout: 6000 });
     assert.equal(await active(), focusedTabId);
     await runner.setViewportSize({ width: 320, height: 750 });

@@ -1,3 +1,4 @@
+import {watchTabs} from './watch-tabs.js';
 import {recipeContract} from './schema.js';
 import {recipeEditor} from './recipe-edit-ui.js';
 import {assertRecipeModelAccess, getWorkflows, getCatalog} from './settings.js';
@@ -6,7 +7,8 @@ const controls = document.querySelector('#controls');
 const tabPicker = document.querySelector('#tab');
 const recipePicker = document.querySelector('#recipe');
 const inputFields = document.querySelector('#inputs');
-const refreshButton = document.querySelector('#refresh');
+const setup = document.querySelector('#recipe-setup');
+let lastTabSnapshot;
 const runButton = document.querySelector('#run');
 const status = document.querySelector('#runner-status');
 const results = document.querySelector('#results');
@@ -58,12 +60,17 @@ function renderQuickReads() {
       if (!title.toLowerCase().includes(query)) continue;
       const button = document.createElement('button');
       button.type = 'button';
-      button.textContent = title;
+      const name = document.createElement('span');
+      name.textContent = recipe.title;
+      const app = document.createElement('small');
+      app.textContent = adapter.title;
+      button.append(name,app);
       button.onclick = () => {
         if (controls.disabled) return;
         clearResults();
         inputKey = undefined;
         if (selectTarget(adapter.id,recipe.id)) form.requestSubmit(document.querySelector('#start-run'));
+        else { setup.open = true; tabPicker.focus(); }
       };
       list.append(button);
     }
@@ -145,7 +152,7 @@ function updateInputs() {
 
 }
 
-function updateRecipes(previous = recipePicker.value) {
+function updateRecipes(previous = recipePicker.value, announce = true) {
   const tab = tabs.find(item => String(item.tabId) === tabPicker.value);
   recipePicker.replaceChildren(new Option('Choose a recipe', ''));
   recipes = [];
@@ -164,30 +171,36 @@ function updateRecipes(previous = recipePicker.value) {
   capture.disabled = !tab;
   if (recipes.some(recipe => recipe.key === previous)) recipePicker.value = previous;
   updateInputs();
+  if (!announce) return;
   if (tabPicker.value === openApp && recipePicker.value) choose('Start the run to find or open the app.');
-  else if (tabPicker.value === openApp) choose('Choose a recipe. The run will pause if you need to open its app or sign in.');
-  else if (!tab) choose(tabs.length ? 'Select the tab you want the recipe to use.' : 'No eligible tabs are open. Open a tab for an approved site and refresh.');
+  else if (tabPicker.value === openApp) choose(setup.open ? 'Choose a recipe. If you need to sign in, the run pauses.' : '');
+  else if (!tab) choose(tabs.length ? 'Select the tab you want the recipe to use.' : 'Open a tab for a site you’ve allowed.');
   else if (!recipes.length) choose('This tab has no installed recipes.');
   else choose('');
 }
 
-async function refresh() {
-  controls.disabled = true;
-  const selected = tabPicker.value;
-  choose('Loading available tabs and recipes…');
+let refreshing = false;
+async function refresh(initial = false) {
+  refreshing = true;
+  let autoStarted = false;
+  if (initial) choose('Finding tabs and recipes…');
   try {
     const [availableSites,installed] = await Promise.all([request('runner.list'),getCatalog()]);
+    const snapshot = JSON.stringify([availableSites,installed]);
+    if (!initial && snapshot === lastTabSnapshot) return;
+    lastTabSnapshot = snapshot;
     tabs = availableSites.tabs;
     const approved = new Set(availableSites.catalog.map(a => a.id));
     catalog = installed.filter(a => approved.has(a.id)).map(adapter => ({
       ...adapter,recipes:adapter.recipes.map(recipe => ({...recipe,...recipeContract(recipe)})),
     }));
+    const selected = tabPicker.value;
     tabPicker.replaceChildren(new Option('Choose a tab', ''));
     for (const { tabId, title, adapterIds } of tabs) {
       const sites = catalog.filter(adapter => adapterIds.includes(adapter.id)).map(adapter => adapter.origin);
       const origin = sites[0];
       const name = title || origin;
-      const label = origin && name !== origin ? `${name} — ${origin} (tab ${tabId})` : `${name} (tab ${tabId})`;
+      const label = origin && name !== origin ? `${name} · ${origin}` : name;
       tabPicker.append(new Option(label, String(tabId)));
     }
     if (catalog.length) tabPicker.append(new Option('Find or open the app for my recipe', openApp));
@@ -198,31 +211,41 @@ async function refresh() {
     if (available) {
       const {adapter,id} = launchRecipe;
       launchRecipe = null;
+      setup.open = requestedRead !== adapter + '/' + id;
       const ready = selectTarget(adapter,id);
+      if (!ready) { setup.open = true; tabPicker.focus(); }
       if (ready && requestedRead === adapter + '/' + id && canQuickRun(available)) {
         controls.disabled = false;
+        autoStarted = true;
         form.requestSubmit(document.querySelector('#start-run'));
         return;
       }
-    } else updateRecipes();
+    } else {
+      const changedTab = selected !== tabPicker.value;
+      updateRecipes(recipePicker.value, initial || changedTab);
+      if (selected && !tabPicker.value) { setup.open = true; choose('That tab closed or left the site. Choose another tab.'); }
+    }
     const noAccess = !catalog.length;
     document.querySelector('#first-workflow').hidden = !noAccess;
-    form.hidden = noAccess;
+    setup.hidden = noAccess;
+    if (document.querySelector('#quick-reads').hidden) setup.open = true;
     if (noAccess) {
       const installed = await getWorkflows();
       document.querySelector('#installed-workflows').hidden = !installed.length;
-      document.querySelector('#first-workflow-title').textContent = installed.length ? 'Choose a workflow' : 'Choose your first workflow';
+      document.querySelector('#first-workflow-title').textContent = installed.length ? 'Choose a workflow' : 'Try a workflow';
       choose((await getCatalog()).length ? 'For an installed recipe, grant its site access in Settings.' : '');
     }
     if (launchRecipe) {
       const adapter = (await getCatalog()).find(a => a.id === launchRecipe.adapter && a.recipes.some(r => r.id === launchRecipe.id));
-      choose(adapter ? 'Grant site access for ' + adapter.origin + ' in Settings, then refresh this page.'
+      choose(adapter ? 'Grant site access for ' + adapter.origin + ' in Settings.'
         : 'This recipe is no longer installed. Open Settings to check the installed library.',true);
     }
   } catch (error) {
     choose(error.message, true);
+  } finally {
+    refreshing = false;
+    if (initial && !autoStarted) controls.disabled = false;
   }
-  controls.disabled = false;
 }
 
 async function attachmentInput(file, name) {
@@ -280,7 +303,7 @@ form.addEventListener('submit', async event => {
   const tabId = tabPicker.value === openApp ? null : Number(tabPicker.value);
   controls.disabled = true;
   clearResults();
-  choose(`Running ${recipe.title} on tab ${tabId}…`);
+  choose(`Running ${recipe.title}…`);
   try {
     const inputs = await gatherInputs();
     if (event.submitter !== runButton) {
@@ -335,8 +358,8 @@ recipePicker.addEventListener('change', () => {
   choose('');
   updateInputs();
 });
-refreshButton.addEventListener('click', () => void refresh());
-void refresh();
+watchTabs(refresh, () => refreshing || controls.disabled);
+void refresh(true);
 
 async function captureTab() {
   const tab = tabs.find(item => String(item.tabId) === tabPicker.value);

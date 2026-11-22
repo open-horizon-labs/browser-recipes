@@ -7,19 +7,26 @@
     <link rel="stylesheet" href="options.css">
     <script type="module" src="options.js"></script>
   </head>
-  <body>
+  <body class="page-settings">
     <main>
-      <h1>Browser Recipes settings</h1>
+      <header class="app-header"><h1>Settings</h1>
+      <nav class="app-nav" aria-label="Browser Recipes">
+        <a href="runner.html"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>Recipes</span></a>
+        <a href="agent.html"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M12 8v4m-6 4v-4h12v4"/></svg><span>Workflows</span></a>
+        <a href="runs.html"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg><span>Runs</span></a>
+        <a href="options.html" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="10" cy="18" r="2"/></svg><span>Settings</span></a>
+      </nav>
+    </header>
       <section aria-labelledby="catalog-heading" id="library">
         <h2 id="catalog-heading">Installed library</h2>
-        <h3>Adapters and their recipes</h3>
+        <h3>Recipes by app</h3>
         <div id="adapter-list"></div>
         <h3>Workflows</h3>
         <div id="workflow-list"></div>
         <h3>Community catalog</h3>
         <button type="button" id="browse-community">Browse community catalog</button>
         <div id="community-controls" hidden>
-          <label for="community-kind">Definition type</label>
+          <label for="community-kind">Show</label>
           <select id="community-kind">
             <option value="workflow">Workflows</option><option value="adapter">Adapters</option><option value="recipe">Recipes</option>
           </select>
@@ -37,23 +44,23 @@
       </section>
       <section aria-labelledby="access-heading">
         <h2 id="access-heading">Site access</h2>
-        <p>Grant access to each site you want recipes to use. Under Allowed operations, choose whether workflows can use results from that site in AI prompts. You review the data before sending it to ChatGPT or copying a prompt into another chat.</p>
+        <p>Choose which sites recipes can use and which results you can share with ChatGPT.</p>
         <ul id="origins"></ul>
       </section>
       <section aria-labelledby="sources-heading">
-        <h2 id="sources-heading">Local data sources</h2>
+        <h2 id="sources-heading">Data sources</h2>
         <p>Enable a source only after configuring its read-only host. Credentials stay in the host configuration. Choose separately whether workflows can include its results in AI prompts.</p>
         <ul id="sources"></ul>
       </section>
       <section aria-labelledby="bridge-heading">
         <h2 id="bridge-heading">Run recipes from the terminal</h2>
-        <p>Leave this off when using the browser panel, including workflows that use ChatGPT. Turn it on if a script or local agent needs to run recipes from your Linux account.</p>
+        <p>Turn this on to run recipes from a script or local agent.</p>
         <label><input id="bridge" type="checkbox"> Allow programs on this computer to run recipes</label>
-        <p>Once the command-line helper is installed and connected, any program running as your Linux user can call recipes on sites you’ve granted access to.</p>
+        <p>Programs running under your Linux account can use recipes on sites you allow.</p>
         <p id="bridge-status" role="status"></p>
       </section>
       <section aria-labelledby="companion-heading">
-        <h2 id="companion-heading">Pair a local ChatGPT helper</h2>
+        <h2 id="companion-heading">Connect a ChatGPT helper</h2>
         <p>On macOS or Windows, start the helper on this computer and enter its pairing code. Once paired, Browser Recipes uses this helper for ChatGPT requests.</p>
         <form id="companion-form">
           <label for="companion-code">Pairing code</label>

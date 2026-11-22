@@ -8,29 +8,29 @@
     <link rel="stylesheet" href="runner.css">
     <script type="module" src="runner.js"></script>
   </head>
-  <body>
+  <body class="page-recipes">
     <main>
-      <header class="runner-header">
-        <h1>Browser Recipes</h1>
-        <nav aria-label="Browser Recipes">
-          <a href="agent.html" target="_blank" rel="noopener">Workflows</a>
-          <a href="runs.html">Runs</a>
-          <a href="options.html" target="_blank" rel="noopener">Settings</a>
-        </nav>
-      </header>
+      <header class="app-header"><h1>Browser Recipes</h1>
+      <nav class="app-nav" aria-label="Browser Recipes">
+        <a href="runner.html" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>Recipes</span></a>
+        <a href="agent.html" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M12 8v4m-6 4v-4h12v4"/></svg><span>Workflows</span></a>
+        <a href="runs.html"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg><span>Runs</span></a>
+        <a href="options.html" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="10" cy="18" r="2"/></svg><span>Settings</span></a>
+      </nav>
+    </header>
       <section id="first-workflow" hidden>
-        <h2 id="first-workflow-title">Choose your first workflow</h2>
-        <p>Compare your Outlook week with Google Calendar to see which meetings are missing, or choose another task from the catalog.</p>
+        <h2 id="first-workflow-title">Try a workflow</h2>
+        <p>Compare Outlook and Google Calendar, or find another task in the catalog.</p>
         <a href="options.html?browse=workflows">Browse workflows</a>
         <a id="installed-workflows" href="agent.html" hidden>Open installed workflows</a>
       </section>
       <section id="quick-reads" hidden>
         <h2>Quick run</h2>
-        <p>Read from an app using the recipe’s defaults.</p>
-        <label for="find-read">Find a recipe</label>
-        <input id="find-read" type="search">
+        <label class="recipe-search"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="5"/><path d="m14 14 5 5"/></svg><input id="find-read" type="search" aria-label="Find a recipe" placeholder="Find a recipe"></label>
         <div id="read-list"></div>
       </section>
+      <details id="recipe-setup">
+        <summary>Set up a run</summary>
       <form id="runner">
         <fieldset id="controls" disabled>
           <div class="field tab-field">
@@ -38,7 +38,6 @@
             <select id="tab" required>
               <option value="">Choose a tab</option>
             </select>
-            <button id="refresh" type="button">Refresh tabs</button>
           </div>
           <div class="field">
             <label for="recipe">Recipe</label>
@@ -47,18 +46,19 @@
             </select>
           </div>
           <div id="inputs"></div>
-          <label class="retain"><input id="review-shared" type="checkbox"> Review shared run inputs and outputs for optional ChatGPT edits</label>
-          <label class="retain"><input id="retain-results" type="checkbox"> Keep shared run results for this browser session</label>
+          <label class="retain"><input id="review-shared" type="checkbox"> Review inputs and results with ChatGPT</label>
+          <label class="retain"><input id="retain-results" type="checkbox"> Keep results until the browser closes</label>
           <div class="launch-actions">
-            <button id="start-run" class="primary" type="submit" disabled>Start recipe run</button>
-            <button id="run" type="submit" disabled>Run recipe here</button>
+            <button id="start-run" class="primary" type="submit" disabled>Start run</button>
+            <button id="run" type="submit" disabled>Run here</button>
           </div>
         </fieldset>
       </form>
+      </details>
       <p id="runner-status" class="status" role="status">Loading available tabs and recipes…</p>
-      <details id="failure" hidden><summary>Failure details for recipe author</summary><textarea readonly rows="9" aria-label="Failure details"></textarea></details>
+      <details id="failure" hidden><summary>Failure details</summary><textarea readonly rows="9" aria-label="Failure details"></textarea></details>
       <details id="evidence" hidden>
-        <summary>Developer evidence</summary>
+        <summary>Page capture</summary>
         <p>Select the active site tab to capture its visible page.</p>
         <button id="capture" type="button" disabled>Capture selected tab</button>
         <div id="capture-output"></div>

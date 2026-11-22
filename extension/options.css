@@ -46,3 +46,115 @@ li, .actions { display: flex; align-items: center; flex-wrap: wrap; justify-cont
 #community-controls input, #community-controls select { max-width: 100%; font: inherit; }
 
 .installed-recipe { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: baseline; gap: .75rem; }
+
+/* Shared appearance for Recipes, Workflows, Runs and Settings. */
+:root {
+  --paper: #f3f7fc;
+  --surface: #fff;
+  --ink: #132844;
+  --muted: #405875;
+  --line: #c9d7e7;
+  --soft: #e7effa;
+  --accent: #0748ad;
+  --strong: #103564;
+  --on-accent: #fff;
+  --danger: #962d30;
+  color: var(--ink);
+  background: var(--paper);
+  font-size: 15px;
+  accent-color: var(--accent);
+  scrollbar-color: var(--line) transparent;
+  caret-color: var(--accent);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #0e1828;
+    --surface: #162338;
+    --ink: #edf4ff;
+    --muted: #bacde5;
+    --line: #405775;
+    --soft: #223652;
+    --accent: #a5ccff;
+    --strong: #142d4e;
+    --on-accent: #10294b;
+    --danger: #ffb4b1;
+  }
+}
+::selection { background: var(--accent); color: var(--on-accent); }
+body main { padding: clamp(1rem, 4vw, 2.5rem); }
+body h1 { margin: 0; font-size: 1.85rem; font-weight: 710; letter-spacing: -.035em; }
+body h2 { font-size: 1.25rem; letter-spacing: -.02em; }
+body h3 { font-size: 1rem; }
+body p { max-width: 70ch; }
+body section { border-color: var(--line); }
+[hidden] { display: none !important; }
+body .app-header {
+  display: grid;
+  gap: 1rem;
+  margin: 0 0 1.6rem;
+  padding: 1.15rem 1.15rem 0;
+  border-radius: 14px;
+  background: var(--strong);
+  color: #f3f8ff;
+}
+.app-header .app-nav { display: flex; flex-wrap: wrap; gap: .25rem .5rem; align-items: center; }
+.app-nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .55rem .45rem .65rem;
+  color: #e0ecff;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  font-size: .85rem;
+  font-weight: 640;
+}
+.app-nav a[aria-current] { border-bottom-color: #9bc7ff; color: #fff; }
+.app-nav a:hover { color: #fff; background: #284e7d; }
+.app-nav a:focus-visible { outline-color: #fff; }
+.app-nav svg, .recipe-search svg {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.app-nav svg circle { fill: var(--strong); }
+a { color: var(--accent); text-underline-offset: .18em; }
+button, select, textarea, input:not([type="checkbox"], [type="radio"], [type="file"]) {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  box-sizing: border-box;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: .5rem;
+  font: inherit;
+}
+button { font-weight: 620; min-height: 2.45rem; }
+select, input:not([type="checkbox"], [type="radio"], [type="file"]) { padding: .45rem .65rem; }
+::placeholder { color: var(--muted); opacity: 1; }
+body button:enabled:hover { background: var(--soft); filter: none; }
+body button:disabled { cursor: default; opacity: .6; }
+body button.primary, body #current button.primary, body #launch button.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+body button.primary:enabled:hover { background: var(--accent); filter: brightness(.9); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+body [data-error] { color: var(--danger); }
+body .meta, body small { color: var(--muted); }
+body summary { cursor: pointer; font-weight: 650; }
+body #library details { border: 0; border-radius: 0; border-block-start: 1px solid var(--line); padding-inline: .25rem; }
+body #library details details { border: 0; }
+body #library .installed-recipe { border-block-start: 1px solid var(--line); }
+body .request, body #rows li, body #community-results li { border-color: var(--line); }
+body #notice { background: var(--paper); }
+body pre { font-family: ui-monospace, monospace; font-size: .875rem; }
+body main > details { border-block-start: 1px solid var(--line); padding-block: .85rem; }
+@media (max-width: 28rem) {
+  body .app-header { padding-inline: .65rem; }
+  .app-header .app-nav { gap: .1rem; }
+  .app-nav a { padding-inline: .3rem; }
+  .app-nav svg { width: .85rem; height: .85rem; }
+}

@@ -27,12 +27,12 @@ After installing a read recipe and granting its site, open **Browser Recipes →
 
 1. Open **Browser Recipes** from the toolbar. Choose **Browse workflows**, then **Install** beside **Copy Outlook events to Google Calendar**. In an existing installation, use **Settings → Browse community catalog**.
 2. The extension installs the workflow with its adapters and recipes. Follow **Set up Copy Outlook events to Google Calendar**.
-3. Grant access to the Outlook host you actually use and to Google Calendar. Open both calendars in this browser profile and choose Week view in each. Use **Refresh tabs** and choose the source and destination tabs by title.
+3. Grant access to the Outlook host you actually use and to Google Calendar. Open both calendars in this browser profile and choose Week view in each. Choose the source and destination tabs by title. The list updates as tabs change.
 
 ## Preview the missing meetings
 
 1. Choose **Start workflow**. In Runs, enter the first and last day to compare. Both tabs navigate to that range. Confirm their time zones when prompted.
-2. Choose **Review model request** and check the data to share. Use **Send to ChatGPT** or **Prepare prompt for manual chat**. Review the reply and choose **Use reviewed reply**.
+2. Choose **Review what goes to ChatGPT** and check the data to share. Use **Send to ChatGPT** or **Prepare prompt for manual chat**. Review the reply and choose **Use reviewed reply**.
 3. Inspect the proposed blocks. If Outlook shows meetings at 9 and 11 and Google already has the 9 o’clock block, only the 11 o’clock block should be offered. Stop here to preview, or select the blocks to carry forward. Titles default to **Busy**. The workflow asks you to approve the write before importing.
 
 ![Calendar preview with one missing block in a test week](images/getting-started/workflow-preview.png)
@@ -43,7 +43,7 @@ To finish the copy, confirm your selection, choose whether to include event titl
 
 Sign in under **Workflows → ChatGPT connection**. In the Recipes panel, open **Filter or change inputs with ChatGPT** before running a recipe, or **Filter or change outputs with ChatGPT** after it finishes. Describe which list entries to remove or which field values to change. Review the request, send it, then accept the proposed values if they match your instructions. You can save separate default instructions for inputs and outputs. Each send and acceptance is still explicit.
 
-In Workflows, enable **Review each recipe’s inputs and outputs for optional ChatGPT edits** to pause between recipes. You can pass the original output along unchanged. The editor sends text and structured fields and omits attachment bytes. Workflow steps intended for document analysis have their own attachment selection.
+In Workflows, enable **Review inputs and results with ChatGPT** to pause between recipes. You can pass the original output along unchanged. The editor sends text and structured fields and omits attachment bytes. Workflow steps intended for document analysis have their own attachment selection.
 
 ## Use a desktop chat or script
 
@@ -86,10 +86,10 @@ Give the agent the [catalog authoring skill](https://github.com/open-horizon-lab
 
 | What you see | What to do |
 | --- | --- |
-| My tab is missing in the runner | Open it in the profile where you installed the extension, grant its exact site under **Settings**, and click **Refresh tabs**. |
+| My tab is missing in the runner | Open it in the profile where you installed the extension, grant its exact site under **Settings**. |
 | The CLI cannot connect | Check that the extension is enabled in the intended profile. Register the ID for that browser again. Toggle **Allow programs on this computer to run recipes** off and on, then try `catalog`. |
 | The adapter is missing from `catalog` | Check for **Changes installed.** Under **Site access**, a granted site shows **Revoke access**. |
 | `tabs` returns an empty list | Open the app in the profile with the extension. Check that the page’s domain matches the origin you granted. Run `tabs` again. |
-| A recipe fails on a step | Open **Failure details for recipe author** in the runner and copy the report. Give the agent the recipe ID, catalog revision (`git -C ../browser-recipes-catalog rev-parse HEAD` for a clean checkout), and returned error. Include the run ID, failed step, operation, target, and completed steps when present. For recent failure records, enable **Developer tools** and run `./bridge/browser-recipes dev.failures`. Check the app before retrying a write. |
+| A recipe fails on a step | Open **Failure details** in the runner and copy the report. Give the agent the recipe ID, catalog revision (`git -C ../browser-recipes-catalog rev-parse HEAD` for a clean checkout), and returned error. Include the run ID, failed step, operation, target, and completed steps when present. For recent failure records, enable **Developer tools** and run `./bridge/browser-recipes dev.failures`. Check the app before retrying a write. |
 
 To disconnect, uncheck **Allow programs on this computer to run recipes**. While it is on, other programs running as your Linux user can issue commands. Use **Revoke access** to withdraw permission for an individual site. [CLI reference](../bridge/README.md) · [Recipe format](recipes.md)

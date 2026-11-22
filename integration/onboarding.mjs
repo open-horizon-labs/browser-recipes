@@ -49,7 +49,7 @@ try {
   await app.getByLabel('Last day shown').fill('2027-02-07');
   for (const label of ['Outlook time zone','Google Calendar time zone']) await app.getByLabel(label).fill('America/New_York');
   await app.getByRole('button',{name:'Continue with these inputs'}).click();
-  await app.getByRole('button',{name:'Review model request'}).click();
+  await app.getByRole('button',{name:'Review what goes to ChatGPT'}).click();
   const data = app.getByLabel('Data to share (JSON)');
   await data.fill((await data.inputValue()).replaceAll('Workshop','Reviewed workshop'));
   await app.getByRole('option',{name:'Fixture model'}).waitFor({state:'attached'});

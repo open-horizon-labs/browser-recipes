@@ -8,18 +8,22 @@
   <link rel="stylesheet" href="runs.css">
   <script type="module" src="run-ui.js"></script>
 </head>
-<body>
+<body class="page-runs">
   <main>
-    <header>
-      <h1>Runs</h1>
-      <nav aria-label="Browser Recipes"><a href="runner.html">Recipes</a><a href="agent.html">Workflows</a><a href="options.html">Settings</a></nav>
+    <header class="app-header"><h1>Runs</h1>
+      <nav class="app-nav" aria-label="Browser Recipes">
+        <a href="runner.html"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>Recipes</span></a>
+        <a href="agent.html"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M12 8v4m-6 4v-4h12v4"/></svg><span>Workflows</span></a>
+        <a href="runs.html" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg><span>Runs</span></a>
+        <a href="options.html"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="10" cy="18" r="2"/></svg><span>Settings</span></a>
+      </nav>
     </header>
     <p id="notice" role="status" aria-live="polite"></p>
     <section id="listing" aria-labelledby="list-heading">
       <div class="toolbar"><h2 id="list-heading">Run history</h2><button id="refresh" type="button">Refresh runs</button></div>
       <div class="filters">
         <label>Show <select id="scope"><option value="">All runs</option><option value="pending">Needs attention</option></select></label>
-        <label>Handoff tag <select id="tag"><option value="">All tags</option></select></label>
+        <label>Action needed <select id="tag"><option value="">All tags</option></select></label>
       </div>
       <ol id="rows"></ol>
       <p id="empty"></p>
