@@ -87,7 +87,7 @@ export function recipeContract(recipe) {
 
 export function validateRecipe(recipe, adapter) {
   const { origin, targets = {}, documentPaths = [] } = adapter;
-  shape(recipe, ['id', 'title', 'inputs', 'steps', 'kind', 'effect'], 'recipe');
+  shape(recipe, ['id', 'title', 'inputs', 'steps', 'kind', 'effect', 'calendarRange'], 'recipe');
   expect(id(recipe.id) && string(recipe.title), 'recipe identity');
   const inputs = recipe.inputs === undefined ? {} : recipe.inputs;
   expect(record(inputs) && Object.keys(inputs).length <= 32, 'recipe inputs');
@@ -169,6 +169,12 @@ export function validateRecipe(recipe, adapter) {
       const type = step.op === 'attach' ? 'attachment' : 'string';
       expect(id(step.input) && Object.hasOwn(inputs, step.input) && inputs[step.input].type === type, location);
     }
+  }
+  if (recipe.calendarRange !== undefined) {
+    expect(recipe.calendarRange === true && inputs['first-day']?.type === 'string' && inputs['last-day']?.type === 'string' &&
+      recipe.steps.some(s => s.op === 'read' && s.as === 'range') &&
+      recipe.steps.some(s => s.op === 'readList' && s.as === 'events') &&
+      recipe.steps.every(s => ['read','readList','assert'].includes(s.op)), 'calendar range reader');
   }
   recipeContract(recipe);
   return recipe;

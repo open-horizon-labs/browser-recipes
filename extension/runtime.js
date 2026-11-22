@@ -1,3 +1,4 @@
+import { requestedRange, readCalendarRange } from './calendar-range.js';
 import { adapterGranted, assertSiteOperation, boundAccount, frameTarget, withinPaths } from './scope.js';
 import { hasOrigin } from './access.js';
 import { readAttachment } from './attachments.js';
@@ -192,10 +193,22 @@ export function createDispatcher(browser, loadCatalog) {
     let stepStartedAt = startedAt;
     let index = 0;
     try {
+      const bounds = recipe.calendarRange && requestedRange(inputs);
+      let ranged;
       for (const [offset, step] of recipe.steps.entries()) {
         index = offset;
         stepStartedAt = performance.now();
-        const value = await runStep(browser, tabId, adapter, step, inputs);
+        const execute = operation => runStep(browser, tabId, adapter, operation, inputs);
+        if (bounds && ['events','range'].includes(step.as) && !ranged) {
+          const rangeStep = recipe.steps.find(s => s.as === 'range');
+          const rowsStep = recipe.steps.find(s => s.as === 'events');
+          ranged = await readCalendarRange(bounds, () => execute(rangeStep), direction => {
+            const word = direction < 0 ? 'previous' : 'next';
+            const selector = 'button[aria-label="'+word+' week" i],button[aria-label^="Go to '+word+' week " i]';
+            return execute({op:'click',selector});
+          }, () => execute(rowsStep));
+        }
+        const value = ranged && Object.hasOwn(ranged,step.as) ? ranged[step.as] : await execute(step);
         if (step.as) {
           outputs[step.as] = value;
           if (value?.kind === 'file') {
