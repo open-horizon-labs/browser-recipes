@@ -20,6 +20,8 @@ const capture = document.querySelector('#capture');
 const captureOutput = document.querySelector('#capture-output');
 
 let catalog = [];
+let currentTab;
+let allApps = false;
 let tabs = [];
 let recipes = [];
 let fields = [];
@@ -40,27 +42,46 @@ function renderQuickReads() {
   const search = document.querySelector('#find-read');
   const list = document.querySelector('#read-list');
   list.replaceChildren();
-  section.hidden = !catalog.some(a => a.recipes.some(canQuickRun));
+  const scope = document.querySelector('#recipe-scope');
+  const target = allApps ? undefined : currentTab;
+  scope.hidden = !currentTab || !catalog.some(a => !currentTab.adapterIds.includes(a.id));
+  scope.textContent = allApps ? 'This tab' : 'All apps';
+  document.querySelector('#recipe-list-title').textContent = target ? 'Recipes for this tab' : 'Recipes';
+  const available = catalog.filter(adapter => !target || target.adapterIds.includes(adapter.id));
+  section.hidden = !available.some(a => a.recipes.length);
   const query = search.value.trim().toLowerCase();
-  for (const adapter of catalog) {
-    for (const recipe of adapter.recipes.filter(canQuickRun)) {
+  for (const adapter of available) {
+    for (const recipe of adapter.recipes) {
       const title = adapter.title + ' · ' + recipe.title;
       if (!title.toLowerCase().includes(query)) continue;
+      const ready = canQuickRun(recipe);
       const button = document.createElement('button');
       button.type = 'button';
       const name = document.createElement('span');
       name.textContent = recipe.title;
       const app = document.createElement('small');
-      app.textContent = adapter.title;
+      app.textContent = ready ? adapter.title : adapter.title + ' · Set up';
       button.append(name,app);
       button.onclick = () => {
-        if (!controls.disabled) void quickRun(adapter.id,recipe.id,recipe.title);
+        if (controls.disabled) return;
+        if (ready) void quickRun(adapter.id,recipe.id,recipe.title,target?.tabId);
+        else {
+          clearResults();
+          tabPicker.value = target ? String(target.tabId) : openApp;
+          updateRecipes(adapter.id + '/' + recipe.id);
+          setup.open = true;
+          setup.querySelector('summary').focus();
+        }
       };
       list.append(button);
     }
   }
   if (!list.childElementCount && query) list.textContent = 'No matching recipes.';
 }
+document.querySelector('#recipe-scope').addEventListener('click',() => {
+  allApps = !allApps;
+  renderQuickReads();
+});
 document.querySelector('#find-read').addEventListener('input',renderQuickReads);
 
 function choose(message, error = false) {
@@ -161,11 +182,15 @@ async function refresh(initial = false) {
   refreshing = true;
   if (initial) choose('Finding tabs and recipes…');
   try {
-    const [availableSites,installed] = await Promise.all([request('runner.list'),getCatalog()]);
-    const snapshot = JSON.stringify([availableSites,installed]);
+    const [availableSites,installed,active] = await Promise.all([
+      request('runner.list'),getCatalog(),chrome.tabs.query({active:true,currentWindow:true}),
+    ]);
+    const sourceId = launchParams.get('fromTab') ?? active[0]?.id;
+    const snapshot = JSON.stringify([availableSites,installed,sourceId]);
     if (!initial && snapshot === lastTabSnapshot) return;
     lastTabSnapshot = snapshot;
     tabs = availableSites.tabs;
+    currentTab = tabs.find(tab => String(tab.tabId) === String(sourceId));
     const approved = new Set(availableSites.catalog.map(a => a.id));
     catalog = installed.filter(a => approved.has(a.id)).map(adapter => ({
       ...adapter,recipes:adapter.recipes.map(recipe => ({...recipe,...recipeContract(recipe)})),
@@ -181,6 +206,7 @@ async function refresh(initial = false) {
     }
     if (catalog.length) tabPicker.insertBefore(new Option('Choose automatically',openApp),tabPicker.options[1] ?? null);
     if (selected === openApp || tabs.some(item => String(item.tabId) === selected)) tabPicker.value = selected;
+    else if (currentTab) tabPicker.value = String(currentTab.tabId);
     else if (catalog.length) tabPicker.value = openApp;
     renderQuickReads();
     const available = launchRecipe && catalog.find(a => a.id === launchRecipe.adapter)?.recipes.find(r => r.id === launchRecipe.id);
@@ -246,12 +272,12 @@ function renderOutput(outputs) {
   results.hidden = !output.childElementCount;
 }
 
-async function quickRun(adapterId,recipeId,title) {
+async function quickRun(adapterId,recipeId,title,tabId) {
   controls.disabled = true;
   clearResults();
   choose('Running ' + title + '…');
   try {
-    showRun(await request('recipe.quickRun',{adapterId,recipeId}),title);
+    showRun(await request('recipe.quickRun',{adapterId,recipeId,tabId}),title);
   } catch (error) {
     choose(error.message,true);
   } finally {

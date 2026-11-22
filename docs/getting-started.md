@@ -21,7 +21,7 @@ The build creates the extension in `dist`.
 2. Turn on **Developer mode**, choose **Load unpacked**, and select the **dist** folder inside **browser-recipes**. You should see a **Browser Recipes** extension card.
 3. Keep the checkout where it is. Pin **Browser Recipes** in the browser’s Extensions menu so you can open the runner from the toolbar.
 
-After installing a read recipe and granting its site, open **Browser Recipes → Quick run** and click the recipe name to see its result. Quick run uses the default inputs. To enter a date range or other inputs, open **Settings → Installed library**, expand the adapter, and choose **Options** beside the recipe.
+Open **Browser Recipes** from a site you have allowed. The panel lists recipes for that tab. Click a recipe to run it or enter its required inputs. Choose **All apps** to browse your full library. For optional inputs such as a date range, open **Set up a run**.
 
 ## Install the workflow and connect your calendars
 

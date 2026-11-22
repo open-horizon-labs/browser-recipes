@@ -69,3 +69,6 @@ body #read-list button:focus-visible { outline-offset: -3px; }
 #recipe-options li[data-active], #recipe-options li:hover { background: var(--soft); }
 #recipe-options li[aria-selected="true"] { font-weight: 650; }
 .recipe-picker-empty { padding: .55rem .65rem; }
+.recipe-list-header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .55rem; }
+.recipe-list-header h2 { margin: .6rem 0; }
+.recipe-list-header button { flex: none; }

@@ -141,8 +141,12 @@ if (chrome.sidePanel?.setPanelBehavior) {
     () => {}
   );
 }
-chrome.action.onClicked.addListener(() => {
-  if (!panelConfigured) void chrome.tabs.create({ url: chrome.runtime.getURL('runner.html') });
+chrome.action.onClicked.addListener(tab => {
+  if (!panelConfigured) {
+    const url = new URL(chrome.runtime.getURL('runner.html'));
+    if (Number.isInteger(tab.id)) url.searchParams.set('fromTab',tab.id);
+    void chrome.tabs.create({url:url.href});
+  }
 });
 
 async function runnerData() {
@@ -171,7 +175,7 @@ async function handlePageRequest({ command, args }) {
       const contract = recipeContract(recipe);
       if (contract.effect !== 'read' || Object.values(contract.inputs).some(input=>input.required))
         throw new RecipeError('SETUP_REQUIRED','Open run options to use this recipe.');
-      return {result:await runService('runs.start',{kind:'recipe',adapterId:adapter.id,recipeId:recipe.id,autoConnect:true})};
+      return {result:await runService('runs.start',{kind:'recipe',adapterId:adapter.id,recipeId:recipe.id,tabId:args.tabId,autoConnect:true})};
     }
     if (pageCommands.has(command)) return {result:await runService(command,args)};
     if (command === 'runner.list') return { result: await runnerData() };
