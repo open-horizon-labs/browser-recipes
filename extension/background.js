@@ -128,9 +128,10 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     void recorder.event(message, sender).then(respond, () => respond({ keep: false }));
     return true;
   }
-  const runner = sender.url === chrome.runtime.getURL('runner.html');
-  const agent = sender.url === chrome.runtime.getURL('agent.html');
-  const runs = sender.url?.split('#')[0] === chrome.runtime.getURL('runs.html');
+  const page = sender.url?.split(/[?#]/,1)[0];
+  const runner = page === chrome.runtime.getURL('runner.html');
+  const agent = page === chrome.runtime.getURL('agent.html');
+  const runs = page === chrome.runtime.getURL('runs.html');
   if (runner || agent || runs) {
     const command = message?.command;
     if (pageCommands.has(command) || ['catalog', 'tabs', 'runner.list'].includes(command) ||
@@ -141,7 +142,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     }
     return false;
   }
-  if (sender.url !== chrome.runtime.getURL('options.html')) return false;
+  if (page !== chrome.runtime.getURL('options.html')) return false;
   if (message?.command === 'bridge.refresh') {
     void refreshBridge().then(() => respond({ status: bridgeStatus }));
     return true;

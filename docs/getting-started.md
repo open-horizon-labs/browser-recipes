@@ -1,12 +1,10 @@
-# Run your first browser recipe
+# Preview Outlook meetings for your Google calendar
 
-Read the first subject in Gmail from the Browser Recipes side panel. The Gmail tab stays in the background, and the message stays unopened. You can also try the public Hacker News recipe without signing into a site.
-
-[Run an installed recipe](#run-a-recipe) · [Copy Outlook events to Google Calendar](calendar-sync.md) · [Ask an agent to write a recipe](#ask-an-agent-to-write-a-recipe)
+See which meetings on your Outlook work calendar are missing from Google Calendar. The workflow compares a week in two signed-in tabs and shows the blocks you could copy. You can stop at that list or approve an import. If you want to review an expense report instead, select the Concur draft review workflow from the same catalog.
 
 ## Install the extension once
 
-You need Git, Node.js 22.13 or later, npm, and a Chromium-based desktop browser that allows unpacked extensions. Once the extension and catalog are installed, running recipes from the browser takes no terminal, native host, or ChatGPT account. Chrome remote debugging can stay disabled.
+You need Git, Node.js 22.13 or later, npm, and a Chromium-based desktop browser that allows unpacked extensions. The calendar comparison includes a model step. To send it from the extension, set up the ChatGPT helper and sign in with ChatGPT. You can also take the reviewed prompt to your desktop chat and paste the reply back. [ChatGPT setup](chatgpt-agent.md) Chrome remote debugging can stay disabled.
 
 Open a terminal in a directory where you can keep the extension. These commands use a POSIX shell (on Windows, use Git Bash).
 
@@ -19,33 +17,25 @@ npm run build
 
 The build creates the extension in `dist`.
 
-1. In the browser profile where you use Gmail, open `chrome://extensions`.
+1. In the browser profile where you use Outlook and Google Calendar, open `chrome://extensions`.
 2. Turn on **Developer mode**, choose **Load unpacked**, and select the **dist** folder inside **browser-recipes**. You should see a **Browser Recipes** extension card.
 3. Keep the checkout where it is. Pin **Browser Recipes** in the browser’s Extensions menu so you can open the runner from the toolbar.
 
-## Load the catalog and grant one site
+## Install the workflow and connect your calendars
 
-1. Open **Browser Recipes** from the toolbar and select **Settings** in the runner.
-2. Under **Installed library**, choose **Browse community catalog**. Select **Recipes** and search for **first subject**. Choose **Review install** for the Gmail recipe, check its site and the proposed changes, then choose **Install changes**. A recipe includes its adapter. A workflow includes the adapters and recipes its steps call. Choose **Adapters** to install an app with all its community recipes. You can still use **Install from a file** for private definitions.
+1. Open **Browser Recipes** from the toolbar. Choose **Browse workflows**, then **Review install** beside **Copy Outlook events to Google Calendar**. In an existing installation, use **Settings → Browse community catalog**.
+2. Review the workflow, adapters, and recipes, then choose **Install changes**. Follow **Set up Copy Outlook events to Google Calendar**.
+3. Grant access to the Outlook host you actually use and to Google Calendar. Open both calendars in this browser profile and display the same week in each. Use **Refresh tabs** and choose the source and destination tabs by title.
 
-![Community catalog search for the first Gmail subject, with the adapter and recipe shown in the install preview](images/getting-started/load-catalog.png)
+## Preview the missing meetings
 
-3. Under **Site access**, find **Gmail** and click **Grant access**. If you’re using the public example, choose **Hacker News** instead. Check the domain in the browser prompt, then click **Allow**. The button for that site changes to **Revoke access**.
+1. Choose **Start workflow**. In Runs, enter the first and last dates shown and the time zone of each calendar.
+2. Choose **Review model request** and check the data to share. Use **Send to ChatGPT** or **Prepare prompt for manual chat**. Review the reply and choose **Use reviewed reply**.
+3. Inspect the proposed blocks. If Outlook shows meetings at 9 and 11 and Google already has the 9 o’clock block, only the 11 o’clock block should be offered. Stop here to preview, or select the blocks to carry forward. Titles default to **Busy**. The workflow asks you to approve the write before importing.
 
-![Browser Recipes asking to read and change data on mail.google.com, with Deny and Allow buttons](images/getting-started/gmail-permission.png)
+![Calendar preview with one missing block in a test week](images/getting-started/workflow-preview.png)
 
-Leave **Developer tools** off. You can leave the **Run recipes from the terminal** off, too.
-
-## Run a recipe
-
-1. Open a Gmail inbox with at least one message in this profile. For the public example, open [Hacker News](https://news.ycombinator.com/) instead.
-2. Switch to another tab. Open **Browser Recipes** from the toolbar and click **Refresh tabs**. Under **Browser tab**, choose your Gmail or Hacker News tab by title and ID.
-3. Choose the Gmail recipe that reads the first visible subject, or the Hacker News recipe that reads the leading headline. Click **Run recipe**.
-4. Under **Results**, compare the subject or headline with what the target tab shows. You can use the same panel for another run. A recipe that needs text or a file will show the input before you run it.
-
-![The installed Hacker News recipe returns a headline from a synthetic front page in the browser test](images/getting-started/runner.png)
-
-To see what else you can run, open the app README in the [catalog](https://github.com/open-horizon-labs/browser-recipes-catalog/tree/main/adapters). For a task that uses two apps, follow [Copy Outlook events to Google Calendar](calendar-sync.md).
+To finish the copy, confirm your selection, choose whether to include event titles, and enter the destination calendar name. Review the destination and approve the import. Check the Google Calendar receipt before running the workflow again. For the step-by-step controls and custom filters, see [Copy Outlook events to Google Calendar](calendar-sync.md).
 
 ## Filter recipe results or change inputs
 
@@ -65,15 +55,15 @@ For terminal access, install Python 3.9 or later and open `chrome://extensions`.
 | Chromium | `./bridge/browser-recipes install YOUR_EXTENSION_ID --browser chromium` |
 | BrowserOS neo using the browser-claw data directory | `./bridge/browser-recipes install YOUR_EXTENSION_ID --browser browseros-neo` |
 
-In Browser Recipes settings, check **Allow programs on this computer to run recipes**. Run these from the runtime checkout. In the last command, replace `123` with the Gmail tab ID from `tabs`.
+In Browser Recipes settings, check **Allow programs on this computer to run recipes**. Run these from the runtime checkout. In the last command, replace `123` with the Outlook tab ID from `tabs`. Use `outlook-office` as the adapter ID if your tab uses `outlook.office.com`.
 
 ```sh
 ./bridge/browser-recipes catalog
 ./bridge/browser-recipes tabs
-./bridge/browser-recipes run '{"tabId":123,"adapterId":"gmail","recipeId":"first-visible-subject","inputs":{}}'
+./bridge/browser-recipes run '{"tabId":123,"adapterId":"outlook","recipeId":"read-calendar-week","inputs":{}}'
 ```
 
-The result includes a `runId` and `outputs.subject`. You can compare the result locally and keep your mail out of the chat.
+The result includes a `runId` and the visible week’s events in `outputs.events`. You can inspect the result locally before deciding what to share.
 
 ![Settings showing a connected terminal helper](images/getting-started/connected.png)
 
@@ -81,13 +71,13 @@ The result includes a `runId` and `outputs.subject`. You can compare the result 
 
 Start with the task you want to repeat. Give Claude or ChatGPT the starting page, what you normally do there, and the result you want back. For example:
 
-> I want a Browser Recipes recipe for Hacker News. Starting from its home page, open Ask HN and return the first story title. Keep my foreground tab selected. Use the catalog’s browser-recipes-author skill. If you can access my two local checkouts and terminal, build and test the recipe there. Otherwise walk me through one local step at a time. Tell me which steps you actually tested.
+> I want a Browser Recipes recipe for Outlook that lists the subjects and dates of the messages visible in my receipts folder. Keep my foreground tab selected. Use the catalog’s browser-recipes-author skill. If you can access my two local checkouts and terminal, build and test the recipe there. Otherwise walk me through one local step at a time. Tell me which steps you actually tested.
 
 Give the agent the [catalog authoring skill](https://github.com/open-horizon-labs/browser-recipes-catalog/blob/main/.agents/skills/browser-recipes-author/SKILL.md). If the chat can’t open the link, attach the file from your catalog checkout along with the references it calls for. A desktop chat can draft JSON from observations you provide. A live test needs access to the terminal and browser profile you connected above.
 
-1. **Choose a test tab and scope.** Open the app at the agreed starting page. For a new app, the agent first adds an adapter for the exact site origin. Repeat the catalog pack command above and save the file in Settings, then grant that site access. Agree on any change the recipe may make before running a draft.
+1. **Choose a test tab and scope.** Open the app at the agreed starting page. For a new app, the agent first adds an adapter for the exact site origin. Import the adapter file in **Settings → Install from a file**, then grant that site access. Agree on any change the recipe may make before running a draft.
 2. **Discover the flow.** In extension settings, enable **Developer tools**. Open **Workflows → Developer tools → Inspect tab**, or use `tabs` and `dev.inspect` through the CLI. For a draft based on your own actions, choose **Start recording**, perform the task in the selected document, then **Stop recording and load draft**. The draft uses placeholders for field values. If you’re running commands for the chat, share only the relevant controls. Inspection results can include private page text.
-3. **Save and test the draft.** The agent puts shared targets in `adapters/<app>/adapter.json`, gives each recipe its own JSON file under `recipes/`, and documents the use case in the app README. Repack and save any new targets before using `dev.test`. Drafts execute real actions. For uploads or downloads, use a test attachment first. [Authoring instructions for writes and attachments](https://github.com/open-horizon-labs/browser-recipes-catalog/blob/main/.agents/skills/browser-recipes-author/references/writes-and-attachments.md)
+3. **Save and test the draft.** The agent puts shared targets in `adapters/<app>/adapter.json`, gives each recipe its own JSON file under `recipes/`, and documents the use case in the app README. Install any updated adapter targets before using `dev.test`. Drafts execute real actions. For uploads or downloads, use a test attachment first. [Authoring instructions for writes and attachments](https://github.com/open-horizon-labs/browser-recipes-catalog/blob/main/.agents/skills/browser-recipes-author/references/writes-and-attachments.md)
 4. **Prove it works as installed.** Install the final recipe file under its adapter in **Installed library**. Turn off **Developer tools**, bring a different tab to the front, and use the ordinary `run` command. Ask for the command you can reuse, the run ID, and what the agent compared with the page. If you ran the command yourself, you can confirm the output locally. For a write, check what the app actually saved.
 
 ## If something goes wrong

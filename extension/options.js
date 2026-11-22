@@ -1,6 +1,6 @@
 import { companionAgentRequest, companionPermission, companionSetting } from './chatgpt-agent-transport.js';
 import { bindingKey, operationKey, operationOrigins, siteOperations } from './scope.js';
-import { hasOrigin } from './access.js';
+import { grantSites, hasOrigin } from './access.js';
 import { getCatalog, getWorkflows } from './settings.js';
 import { initializeLibrary } from './library-ui.js';
 import { originPattern } from './schema.js';
@@ -165,17 +165,17 @@ async function changeOrigin(origin, granted) {
   if (changingOrigin) return;
   changingOrigin = true;
   try {
-    const pattern = originPattern(origin);
-    // Call permissions.request synchronously inside the user's click.
-    if (!granted && !await chrome.permissions.request({ origins: [pattern] })) {
+    if (granted) {
+      await navigator.locks.request('approved-origins',async () => {
+        const {approvedOrigins = []} = await chrome.storage.local.get('approvedOrigins');
+        const updated = approvedOrigins.filter(entry => entry !== origin);
+        await chrome.storage.local.set({approvedOrigins:updated});
+        const pattern = originPattern(origin);
+        if (!updated.some(entry => originPattern(entry) === pattern)) await chrome.permissions.remove({origins:[pattern]});
+      });
+    } else if (!await grantSites([origin])) {
       show('Site access was declined.');
       return;
-    }
-    const { approvedOrigins = [] } = await chrome.storage.local.get('approvedOrigins');
-    const updated = granted ? approvedOrigins.filter(entry => entry !== origin) : [...new Set([...approvedOrigins, origin])];
-    await chrome.storage.local.set({ approvedOrigins: updated });
-    if (granted && !updated.some(entry => originPattern(entry) === pattern)) {
-      await chrome.permissions.remove({ origins: [pattern] });
     }
     await renderOrigins();
     show(granted ? 'Site access revoked.' : 'Site access granted.');

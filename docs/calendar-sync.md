@@ -4,7 +4,7 @@ Use this catalog workflow to mark Outlook meetings as **Busy** on a Google calen
 
 ## Prepare the tabs
 
-1. Install the extension and load the catalog. Grant the Outlook and Google Calendar sites in Settings. Grant the origin your signed-in Outlook tab uses, either `outlook.cloud.microsoft` or `outlook.office.com`. [Getting started](getting-started.md)
+1. Open **Browse workflows**, choose **Copy Outlook events to Google Calendar**, and install it. Follow **Set up Copy Outlook events to Google Calendar** to grant site access. Grant the origin your signed-in Outlook tab uses, either `outlook.cloud.microsoft` or `outlook.office.com`. [Getting started](getting-started.md)
 2. Open Outlook and Google Calendar in the same browser profile. Show the same week on both sides. Show only the intended calendar in Google if you want to compare against that calendar alone. Any other visible event can count as occupied time.
 3. Open **Browser Recipes → Workflows**, choose **Copy Outlook events to Google Calendar**, and assign each tab by title and ID. You can keep another tab in front.
 4. Under **ChatGPT connection**, choose **Sign in with ChatGPT** and complete plan authorization. This connects the agent to OpenAI. Outlook and Google keep using their existing browser sessions. [Helper setup and account storage](chatgpt-agent.md)

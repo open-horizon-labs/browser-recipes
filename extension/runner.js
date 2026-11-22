@@ -1,5 +1,5 @@
 import {recipeEditor} from './recipe-edit-ui.js';
-import {assertRecipeModelAccess} from './settings.js';
+import {assertRecipeModelAccess, getWorkflows, getCatalog} from './settings.js';
 const form = document.querySelector('#runner');
 const controls = document.querySelector('#controls');
 const tabPicker = document.querySelector('#tab');
@@ -139,7 +139,15 @@ async function refresh() {
     if (selected === openApp || tabs.some(item => String(item.tabId) === selected)) tabPicker.value = selected;
     else if (!tabs.length && catalog.length) tabPicker.value = openApp;
     updateRecipes();
-    if (!catalog.length) choose('Install and grant access to an adapter in Settings, then refresh.');
+    const noAccess = !catalog.length;
+    document.querySelector('#first-workflow').hidden = !noAccess;
+    form.hidden = noAccess;
+    if (noAccess) {
+      const installed = await getWorkflows();
+      document.querySelector('#installed-workflows').hidden = !installed.length;
+      document.querySelector('#first-workflow-title').textContent = installed.length ? 'Choose a workflow' : 'Choose your first workflow';
+      choose((await getCatalog()).length ? 'For an installed recipe, grant its site access in Settings.' : '');
+    }
   } catch (error) {
     choose(error.message, true);
   } finally {

@@ -4,7 +4,7 @@ Many web apps have no Model Context Protocol (MCP) server an agent can call. An 
 
 Browser Recipes lets an agent inspect the app once and save the navigation, actions, and checks as a JSON recipe. The Chromium extension executes those steps directly in the open tab, using its signed-in session. Replay needs no model call, leaves the foreground tab selected, and keeps your cursor free.
 
-**[Run your first recipe](docs/getting-started.md)** · **[Copy Outlook events to Google Calendar](docs/calendar-sync.md)**
+**[Preview Outlook meetings for Google Calendar](docs/getting-started.md)** · **[Copy Outlook events to Google Calendar](docs/calendar-sync.md)**
 
 ## Run from the browser or a script
 
@@ -49,7 +49,7 @@ This repository contains the extension, interpreter, ChatGPT helper, and optiona
 
 ## First run on Linux
 
-[Follow the getting started guide](docs/getting-started.md) to install the extension, run a recipe in a background tab, and ask Claude or ChatGPT to help write one for your app.
+[Follow the getting started guide](docs/getting-started.md) to install the extension, compare two calendars in background tabs, and ask Claude or ChatGPT to help write one for your app.
 
 ## Write or fix a recipe
 

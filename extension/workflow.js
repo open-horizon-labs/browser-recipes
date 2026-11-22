@@ -77,6 +77,8 @@ export function validateBundle(input) {
   for (const workflow of workflows) {
     check(record(workflow) && name(workflow.id) && !ids.has(workflow.id) && label(workflow.title), 'Each workflow needs a unique ID and title.');
     ids.add(workflow.id);
+    check(workflow.onboardingOrder === undefined || (Number.isSafeInteger(workflow.onboardingOrder) &&
+      workflow.onboardingOrder > 0), 'Invalid onboarding order in ' + workflow.id);
     const roles = new Map();
     for (const [key, role] of entries(workflow.tabs, 'tab roles')) {
       check(record(role) && name(key) && label(role.label) && (role.alternatives === undefined || Array.isArray(role.alternatives)), 'Invalid tab role in ' + workflow.id);

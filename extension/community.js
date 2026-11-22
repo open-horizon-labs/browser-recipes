@@ -21,7 +21,7 @@ export function communityItems(catalog) {
         path:'adapters/'+adapter.id+'/recipes/'+recipe.id+'.json', adapter,recipe});
     }
   }
-  for (const workflow of catalog.workflows) items.push({kind:'workflow',title:workflow.title,
+  for (const workflow of [...catalog.workflows].sort((a,b) => (a.onboardingOrder ?? Number.MAX_SAFE_INTEGER) - (b.onboardingOrder ?? Number.MAX_SAFE_INTEGER))) items.push({kind:'workflow',title:workflow.title,
     detail:workflow.description || workflow.steps.length + ' steps',path:'workflows/'+workflow.id+'.json',workflow});
   return items;
 }

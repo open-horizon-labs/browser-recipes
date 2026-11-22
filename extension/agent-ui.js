@@ -3,7 +3,9 @@ import { chatgptAgentRequest } from './chatgpt-agent-transport.js';
 import { assertConnectorSharingAllowed, runConnector } from './connector.js';
 import { agentDocumentInputs, reviewedDocumentInputs } from './workflow-documents.js';
 import { availableGuideActions, guidePrompt, guideReply } from './guide.js';
-import { assertWorkflowModelAccess, getWorkflows } from './settings.js';
+import {grantSites} from './access.js';
+import {operationOrigins} from './scope.js';
+import { assertWorkflowModelAccess, installedBundle } from './settings.js';
 import { canWrite, checkpointSummary, currentItem, mapItemInputs, newCheckpoint, updateCheckpoint, writeItems } from './write-session.js';
 import { executeTransform, roleAdapters, workflowInputs, workflowPrompt } from './workflow.js';
 
@@ -11,6 +13,10 @@ const el = id => document.getElementById(id);
 const results = new Map();
 const selectedTabs = new Map();
 let workflows = [];
+let adapters = [];
+let approved = new Set();
+let requestedWorkflow = new URLSearchParams(location.search).get('workflow');
+const roleGranted = role => roleAdapters(role).some(id => approved.has(id));
 let tabs = [];
 let workflow;
 let index = 0;
@@ -107,7 +113,7 @@ function updateControls() {
   el('review-choice').hidden = !workflow;
   el('review-recipes').disabled = busy || Boolean(pendingOutput);
   el('launch').hidden = !workflow || index > 0 || Boolean(pendingOutput);
-  el('start-run').disabled = busy || !workflow;
+  el('start-run').disabled = busy || !workflow || !Object.values(workflow.tabs).every(roleGranted);
   el('workflow').disabled = busy || !workflows.length;
   el('refresh').disabled = busy;
   el('reset').disabled = busy;
@@ -206,6 +212,24 @@ function renderRoles() {
       report();
     });
     const group = field(`tab-${id}`, role.label, picker);
+    if (!roleGranted(role)) {
+      const access = node('div');
+      access.append(node('p','Grant access to the site you use for ' + role.label + '.'));
+      for (const adapter of adapters.filter(a => roleAdapters(role).includes(a.id))) {
+        const origins = operationOrigins(adapter);
+        const grant = node('button','Grant access to ' + origins.join(' and '),{type:'button'});
+        grant.onclick = () => void act('Requesting site access…',async () => {
+          if (!await grantSites(origins)) return 'Site access was declined. You can grant it here when ready.';
+          await refresh();
+          return 'Site access granted.';
+        });
+        access.append(grant);
+      }
+      const setup = node('div');
+      setup.append(group,access);
+      el('roles').append(setup);
+      continue;
+    }
     if (!choices.length) {
       const note = node('small', 'Start the workflow to open the app when prompted, or open an approved tab and refresh.');
       note.id = 'tab-hint-' + id;
@@ -808,7 +832,7 @@ function selectWorkflow() {
 }
 
 async function refresh() {
-  const [data, installed, checkpoints] = await Promise.all([request('runner.list'), getWorkflows(), records(checkpointPrefix)]);
+  const [data, installed, checkpoints] = await Promise.all([request('runner.list'), installedBundle(), records(checkpointPrefix)]);
   const activeRepeat = workflow?.steps[index]?.repeat ? journalKey(workflow.steps[index]) : undefined;
   const before = activeRepeat ? writeCheckpoints.get(activeRepeat) : undefined;
   writeCheckpoints.clear();
@@ -816,7 +840,10 @@ async function refresh() {
   const checkpointChanged = activeRepeat && JSON.stringify(before) !== JSON.stringify(writeCheckpoints.get(activeRepeat));
   tabs = data.tabs;
   renderDevTabs(data.catalog);
-  workflows = installed;
+  workflows = installed.workflows;
+  el('browse-workflows').hidden = !!workflows.length;
+  adapters = installed.adapters;
+  approved = new Set(data.catalog.map(a => a.id));
   const previous = workflow?.id;
   el('workflow').replaceChildren(new Option('Choose a workflow', ''));
   for (const definition of workflows) el('workflow').append(new Option(definition.title, definition.id));
@@ -831,6 +858,8 @@ async function refresh() {
     renderRoles();
     if (checkpointChanged || !el('current').querySelector('fieldset') || !roleSelected()) render();
   } else {
+    if (requestedWorkflow && workflows.some(w => w.id === requestedWorkflow)) el('workflow').value = requestedWorkflow;
+    requestedWorkflow = null;
     selectWorkflow();
   }
   return workflows.length ? '' : 'Install a workflow catalog in Settings, then refresh.';

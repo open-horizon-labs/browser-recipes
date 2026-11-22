@@ -147,6 +147,9 @@ export async function initializeLibrary(refreshSettings) {
         steps.append(element('li',step.label + ' · ' + binding));
       }
       panel.append(steps);
+      const launch = element('a','Open workflow');
+      launch.href = 'agent.html?workflow=' + encodeURIComponent(w.id);
+      panel.append(launch,document.createTextNode(' '));
       if (local.workflows.some(row => row.id === w.id)) removal(panel,'workflow',w);
       workflows.append(panel);
     }
@@ -155,6 +158,7 @@ export async function initializeLibrary(refreshSettings) {
   const heading = byId('install-heading');
   const refreshCommunity = communityBrowser((selection,title) => {
     if (save.disabled) return;
+    byId('continue-workflow')?.remove();
     ++reading;
     raw = selection;
     file.value = '';
@@ -167,6 +171,7 @@ export async function initializeLibrary(refreshSettings) {
   owner.onchange = review;
   file.onchange = async () => {
     heading.hidden = true;
+    byId('continue-workflow')?.remove();
     const ticket = ++reading;
     raw = undefined;
     preview.replaceChildren(); save.hidden = true;
@@ -189,13 +194,25 @@ export async function initializeLibrary(refreshSettings) {
   save.onclick = async () => {
     save.disabled = file.disabled = owner.disabled = true;
     try {
+      const workflows = checked(local).changes.workflows;
       await commit(before => checked(before).next);
       raw = undefined; file.value = ''; preview.replaceChildren(); save.hidden = true;
       byId('owner-field').hidden = true;
       heading.hidden = true;
       status.textContent = 'Changes installed.';
+      if (workflows.length === 1) {
+        const link = element('a','Set up ' + workflows[0].title);
+        link.href = 'agent.html?workflow=' + encodeURIComponent(workflows[0].id);
+        status.after(link);
+        link.id = 'continue-workflow';
+      }
     } catch (e) { status.textContent = e.message; }
     finally { save.disabled = file.disabled = owner.disabled = false; }
   };
   await render();
+  if (new URLSearchParams(location.search).get('browse') === 'workflows') {
+    const browse = byId('browse-community');
+    browse.focus();
+    browse.click();
+  }
 }
