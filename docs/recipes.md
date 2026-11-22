@@ -5,9 +5,9 @@ An adapter describes a single exact HTTP(S) origin. Use a separate adapter for a
 ```json
 [
   {
-    "id": "workshop",
-    "title": "Local recipe workshop",
-    "origin": "http://127.0.0.1:8765",
+    "id": "my-app",
+    "title": "My app",
+    "origin": "https://app.example.com",
     "targets": { "heading": "main h1" },
     "recipes": []
   }

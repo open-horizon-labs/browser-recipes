@@ -19,16 +19,14 @@ node ../tab-recipes-catalog/scripts/pack.mjs > /tmp/tab-recipes-catalog.json
 
 1. Open the browser's Extensions page, enable Developer mode, choose **Load unpacked**, and select the generated `dist` directory.
 2. Copy the displayed extension ID. Run `./bridge/tab-recipes install YOUR_EXTENSION_ID` for Chrome, or append `--browser chromium` for Chromium.
-3. Open the extension options. Import the JSON array generated above, grant the workshop origin, and enable the local bridge.
-4. Serve the workshop with `python3 -m http.server 8765 --bind 127.0.0.1 --directory ../tab-recipes-catalog/demo`. Open `http://127.0.0.1:8765/` in a tab. You can switch back to another tab.
-5. Run the commands below. Replace 123 with the workshop tab ID from `tabs`.
+3. Open the extension options. Import the JSON array generated above, grant access to `https://news.ycombinator.com`, and enable the local bridge.
+4. Open Hacker News at `https://news.ycombinator.com/` in a tab. You can switch back to another tab.
+5. Run the commands below. Replace 123 with the Hacker News tab ID from `tabs`.
 
 ```sh
 ./bridge/tab-recipes catalog
 ./bridge/tab-recipes tabs
-./bridge/tab-recipes run '{"tabId":123,"adapterId":"workshop","recipeId":"read-ticket","inputs":{}}'
-./bridge/tab-recipes run '{"tabId":123,"adapterId":"workshop","recipeId":"save-response","inputs":{"message":"Ready for pickup"}}'
-./bridge/tab-recipes run '{"tabId":123,"adapterId":"workshop","recipeId":"dispatch-note","inputs":{}}'
+./bridge/tab-recipes run '{"tabId":123,"adapterId":"hacker-news","recipeId":"front-page","inputs":{}}'
 ```
 
 ## Author and repair a recipe
@@ -36,7 +34,7 @@ node ../tab-recipes-catalog/scripts/pack.mjs > /tmp/tab-recipes-catalog.json
 Enable authoring in the extension options. Run `dev.inspect` against the permitted tab to discover controls and navigation. Put stable selectors in the adapter's target map. Write a recipe against those target names, then use `dev.test` to exercise the draft. Draft runs can change the page. Test a write on disposable data and use a postcondition supplied by the app to verify that it committed.
 
 ```sh
-./bridge/tab-recipes dev.inspect '{"tabId":123,"adapterId":"workshop"}'
+./bridge/tab-recipes dev.inspect '{"tabId":123,"adapterId":"hacker-news"}'
 ./bridge/tab-recipes dev.test - < draft-request.json
 ./bridge/tab-recipes dev.failures
 ```
@@ -46,13 +44,13 @@ A draft request takes this shape.
 ```json
 {
   "tabId": 123,
-  "adapterId": "workshop",
+  "adapterId": "hacker-news",
   "recipe": {
-    "id": "ticket-heading",
-    "title": "Read the ticket heading",
+    "id": "newest-headline",
+    "title": "Read the newest headline",
     "steps": [
-      { "op": "navigate", "path": "/ticket.html" },
-      { "op": "read", "target": "ticket", "as": "heading" }
+      { "op": "navigate", "path": "/newest" },
+      { "op": "read", "target": "first-headline", "as": "headline" }
     ]
   },
   "inputs": {}
@@ -82,4 +80,4 @@ npx playwright-core install chromium
 npm test
 ```
 
-The Linux integration test expects the community catalog in a sibling checkout. Set `CATALOG_DIR` to override it or `CHROMIUM_PATH` to use an installed Chromium build that supports unpacked extensions in headless mode. It creates a disposable browser profile and pregrants a single loopback permission in the test manifest. It then exercises the options UI, origin grant, native host and CLI. Port 8765 must be free.
+The Linux integration test serves its own [workshop fixture](integration/fixtures/workshop). Set `CHROMIUM_PATH` to use an installed Chromium build that supports unpacked extensions in headless mode. It creates a disposable browser profile and pregrants a single loopback permission in the test manifest. It then exercises the options UI, origin grant, native host and CLI. Port 8765 must be free.

@@ -11,7 +11,7 @@ import { verifyAuthoring } from './authoring.mjs';
 
 const exec = promisify(execCallback);
 const root = fileURLToPath(new URL('../', import.meta.url));
-const catalog = process.env.CATALOG_DIR || path.resolve(root, '../tab-recipes-catalog');
+const workshopDir = path.join(root, 'integration/fixtures/workshop');
 const stage = await mkdtemp(path.join(tmpdir(), 'tab-recipes-'));
 const fixtureOrigin = 'http://127.0.0.1:8765';
 const runtimeDir = path.join(stage, 'runtime');
@@ -41,11 +41,11 @@ try {
   manifest.host_permissions = ['http://127.0.0.1/*'];
   await writeFile(manifestPath, JSON.stringify(manifest));
   const fixture = path.join(stage,'demo');
-  await cp(path.join(catalog,'demo'),fixture,{recursive:true});
+  await cp(path.join(workshopDir,'site'),fixture,{recursive:true});
   // An opaque image payload exercises file fallback across the native message size boundary.
   const imageBytes = Buffer.alloc(1024 * 1024, 0xa5);
   await writeFile(path.join(fixture,'files','scan.png'), imageBytes);
-  const workshop = JSON.parse(await readFile(path.join(catalog, 'adapters/workshop.json')));
+  const workshop = JSON.parse(await readFile(path.join(workshopDir, 'adapter.json')));
   const ticketPage = path.join(fixture,'ticket.html');
   const ticketHtml = await readFile(ticketPage,'utf8');
   await writeFile(ticketPage,ticketHtml.replace('</main>', '<a id="scan" href="/files/scan.png">Scan</a></main>'));
