@@ -1,8 +1,32 @@
 # Tab Recipes
 
-Teach an agent a task in a browser app, then run the saved recipe from a shell script, a scheduler, or another agent. Each request addresses an open tab by ID. You can keep using the tab in front of you.
+Tab Recipes lets you use an LLM to figure out a task in a browser app once, then give that task to a script. The agent saves what it learned as a recipe you can read, test, and share. On the next run, a program or another agent calls the recipe by name. The extension executes its steps in the selected tab while you keep working in the foreground. Replay requires no model call.
 
-This repository contains a Chromium extension, a Linux native-messaging bridge and a JSON CLI. Site definitions live in the [community catalog](https://github.com/open-horizon-labs/tab-recipes-catalog). The extension starts with an empty catalog. An adapter declares an exact site origin, named controls and permitted document paths. Its recipes bind inputs, perform ordered operations, check outcomes and return named outputs.
+## How an app becomes callable
+
+Take “read the first active expense report in Concur.” To do that by hand, you open Manage Expenses, check that you landed on the right page, and read the first report card. The community Concur recipe expresses those same three steps.
+
+```json
+[
+  { "op": "navigate", "path": "/nui/expense" },
+  { "op": "assert", "target": "manage-expenses", "text": "Manage Expenses" },
+  { "op": "read", "target": "first-report", "as": "summary" }
+]
+```
+
+The **adapter** defines what `first-report` means on this site. It gives the control a CSS selector and declares the exact origin where it can be used. The **recipe** defines what to do with that control and names the output. If Concur changes the report card markup, a maintainer can update the selector in one place. Callers still ask for the same recipe and read the same `summary` field. [Concur adapter and recipe](https://github.com/open-horizon-labs/tab-recipes-catalog/blob/main/adapters/concur.json)
+
+Once you grant access to the site, a caller lists the available recipes and tabs, then sends the recipe ID, tab ID, and inputs through the local CLI. The extension acts on the page in that tab’s browser session. The sequence is fixed, but the data is live. For Concur, the result contains the report summary visible to the signed-in user at the time of the call.
+
+This repository owns the extension, the Linux CLI bridge, and the recipe interpreter. The community repository owns the site definitions. Someone who knows an app can contribute a workflow or repair a target, and users can import the updated adapter independently of an extension release. The catalog includes Concur, Gmail, Outlook, and Hacker News. [Community catalog](https://github.com/open-horizon-labs/tab-recipes-catalog)
+
+## Discover, test, and repair a recipe
+
+Enable developer tools in the extension options when you want an agent to author a recipe. On a tab you have granted access to, `dev.inspect` exposes controls and same-origin navigation links. The agent can use that information to name targets, write steps, and run a draft with `dev.test`. Review the JSON and import the finished adapter. You can then turn developer tools off and call the saved recipe with `run`. [Recipe authoring guide](docs/recipes.md)
+
+For a write, include a check that the app accepted the change. In the prototype, a date field looked filled in a background tab while the app still held the old value. Reading back a saved record catches that failure. For a task involving an attachment, the adapter can declare a download path so the extension can fetch the file using the tab’s session. It extracts text locally from PDFs and Office documents and can return the original bytes for a scan or image. [Design notes](docs/design.md)
+
+When a step fails, execution stops. The error identifies the recipe, failed step, operation, and named target when available. It also lists the steps that completed and how long they took. Give that record and the installed catalog revision to an agent so it can inspect the changed page and test a repair. Check what the app saved before retrying a write. Developer mode makes recent failures available through `dev.failures`. [CLI commands](bridge/README.md)
 
 ## First run on Linux
 
@@ -29,45 +53,13 @@ node ../tab-recipes-catalog/scripts/pack.mjs > /tmp/tab-recipes-catalog.json
 ./bridge/tab-recipes run '{"tabId":123,"adapterId":"hacker-news","recipeId":"front-page","inputs":{}}'
 ```
 
-## Author and repair a recipe
+A successful run returns a `runId` and the current headline in `outputs.headline`. You can use that field directly in a shell script.
 
-Enable authoring in the extension options. Run `dev.inspect` against the permitted tab to discover controls and navigation. Put stable selectors in the adapter's target map. Write a recipe against those target names, then use `dev.test` to exercise the draft. Draft runs can change the page. Test a write on disposable data and use a postcondition supplied by the app to verify that it committed.
+## Access and limits
 
-```sh
-./bridge/tab-recipes dev.inspect '{"tabId":123,"adapterId":"hacker-news"}'
-./bridge/tab-recipes dev.test - < draft-request.json
-./bridge/tab-recipes dev.failures
-```
+Review an adapter before granting its origin. A recipe can submit data using your signed-in account, and local processes running as your Linux user can call the bridge while it is enabled. Discovery output and successful reads may contain private page content.
 
-A draft request takes this shape.
-
-```json
-{
-  "tabId": 123,
-  "adapterId": "hacker-news",
-  "recipe": {
-    "id": "newest-headline",
-    "title": "Read the newest headline",
-    "steps": [
-      { "op": "navigate", "path": "/newest" },
-      { "op": "read", "target": "first-headline", "as": "headline" }
-    ]
-  },
-  "inputs": {}
-}
-```
-
-When a replay fails, give the agent the structured failure and the adapter version you ran. Inspect the failed step, update the draft and check the result before promoting it to the catalog. Check for existing writes before retrying a partially completed workflow.
-
-## Trust and scope
-
-Review a pack before importing it. A recipe can click a control or submit data using your signed-in account. Grant only the sites you intend to automate. The bridge accepts local processes running under your Linux user when enabled. Authoring mode exposes page labels and draft execution. Keep discovery output and successful recipe results local when working with private apps.
-
-The extension targets top-level HTML documents. Site-specific widgets, cross-origin frames, closed shadow roots, browser dialogs and flows requiring a real user gesture need individual verification. The browser must stay open. The included local host installer supports Linux.
-
-See the [bridge interface](bridge/README.md), the [design and salvage notes](docs/design.md) and the [catalog contribution guide](https://github.com/open-horizon-labs/tab-recipes-catalog#contributing).
-
-The [recipe format](docs/recipes.md) covers every operation, including starting discovery on a new site, attachment inputs and failure handoff.
+The browser and target tab must stay open. The extension operates on top-level HTML documents. Check support for an app’s widgets, embedded frames, and flows that require a user gesture before relying on a recipe.
 
 ## Run the checks
 
