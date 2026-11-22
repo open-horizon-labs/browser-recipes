@@ -2,13 +2,32 @@
 
 Many web apps have no Model Context Protocol (MCP) server an agent can call. An agent can still use the app through a browser or computer-use tool. For a recurring task, that often means inspecting the same pages, finding the same controls, and deciding where to click on every run. Most computer-use tools also take over the active window and mouse pointer while the agent works.
 
-Tab Recipes lets an agent inspect the app once and save the navigation, actions, and checks as a JSON recipe. On subsequent runs, a script or an agent passes the recipe ID, tab ID, and inputs to the CLI. The Chromium extension executes those steps directly in the open tab, using its signed-in session. Replay needs no model call, leaves the foreground tab selected, and keeps your cursor free.
+Tab Recipes lets an agent inspect the app once and save the navigation, actions, and checks as a JSON recipe. The Chromium extension executes those steps directly in the open tab, using its signed-in session. Replay needs no model call, leaves the foreground tab selected, and keeps your cursor free.
+
+## Where the CLI fits
+
+The extension runs the recipe. In the hackathon prototype, you picked a recipe in the side panel and clicked Run. The panel sent the request directly to the extension’s service worker. That path needed no CLI or native messaging host.
+
+A shell script runs outside Chrome. The Linux CLI sends its request through a local native messaging host to the same kind of runner inside the extension. **This version only exposes Run through the bridge.** Its toolbar button opens settings. Restoring a Run action inside the extension would let desktop users run recipes without installing the host.
+
+## Example: show today’s Outlook events from the shell
+
+Suppose a morning script needs to print your Outlook agenda. The following illustrates a proposed `today-events` recipe. The catalog currently ships an Outlook mail recipe. [Available Outlook recipes](https://github.com/open-horizon-labs/tab-recipes-catalog/tree/main/adapters/outlook)
+
+With the calendar recipe installed, use the ID of your signed-in Outlook tab in place of `123`. This shell example uses `jq` to print the returned agenda text.
+
+```sh
+agenda=$(./bridge/tab-recipes run '{"tabId":123,"adapterId":"outlook","recipeId":"today-events","inputs":{}}') || exit 1
+printf '%s\n' "$agenda" | jq -er '.outputs.agenda'
+```
+
+The recipe would open the calendar’s day view, select **Today**, wait for the day’s agenda to load, and read the displayed event times and titles. Outlook’s calendar time zone determines “today.” On an empty day the recipe should return Outlook’s empty-agenda text. If the agenda control is missing, the run should fail.
+
+Every decision at run time is specified in advance. The shell passes a recipe ID, the extension executes fixed steps in the background tab, and `jq` prints one field. No prompt, model call, or cursor movement is involved.
 
 ## Running on a managed desktop
 
-**Chrome remote debugging can stay disabled.** A workflow runner sends the recipe and tab IDs through a local native messaging host. The extension checks site access and uses Chrome’s scripting API to run the steps in the existing tab. This also works for attachments that require the user’s signed-in session.
-
-For a corporate desktop that prohibits remote debugging, this removes the need for a policy exception just to run a workflow. IT still needs to allow the extension, its native messaging host, and access to the sites being automated. The current CLI bridge supports Linux. [Extension permissions](extension/manifest.json) · [Local bridge](bridge/README.md)
+**Chrome remote debugging can stay disabled.** The extension checks site access and uses Chrome’s scripting API to run steps in the existing tab. IT needs to allow the extension and the sites it automates. Running recipes from outside Chrome also requires permission to install the native messaging host. [Extension permissions](extension/manifest.json) · [Local bridge](bridge/README.md)
 
 ## Example: read an expense report in Concur
 
