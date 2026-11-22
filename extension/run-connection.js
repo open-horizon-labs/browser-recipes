@@ -30,7 +30,7 @@ async function approved(browser, adapter) {
 }
 
 // This check runs only on approved app documents, never on a sign-in provider.
-async function inspectApp(browser, adapter, tab) {
+async function inspectApp(browser, adapter, tab, identity) {
   if (adapter.backgroundOnly && tab.active) fail('ACTIVE_TAB', 'Return to the run in another tab before resuming this background-only adapter.');
   if (!adapter.identity && !adapter.auth?.signedOutSelector) return false;
   await assertSiteOperation(browser, adapter, 'read');
@@ -45,7 +45,7 @@ async function inspectApp(browser, adapter, tab) {
   }
   if (!adapter.identity) return false;
   const target = await frameTarget(browser, tab.id, adapter);
-  await boundAccount(browser, target, adapter, {verify:true});
+  await boundAccount(browser, target, adapter, {verify:true,identity});
   return false;
 }
 
@@ -84,6 +84,62 @@ export async function resolveConnection(browser, adapters, role, tabId) {
   }
   const needsAuth = tabState(adapter, tab) !== 'app' || await inspectApp(browser, adapter, tab);
   return {adapterId:adapter.id, tabId:tab.id, needsAuth};
+}
+
+// A labeled run may only inspect tabs for its approved adapter. Keep the chosen tab across handoffs.
+export async function findAccountTab(browser, adapter, identity, tabId, entryPath, accountPrefix) {
+  await approved(browser,adapter);
+  const matchesPage = tab => {
+    if (!entryPath) return true;
+    let path = new URL(tab.pendingUrl || tab.url).pathname;
+    if (accountPrefix && path.startsWith(accountPrefix)) {
+      const parts = path.slice(accountPrefix.length).split('/');
+      parts.shift();
+      path = accountPrefix.slice(0,-1).replace(/[^/]+$/,'') + parts.join('/');
+    }
+    return path === entryPath || path.startsWith(entryPath.replace(/\/$/,'')+'/');
+  };
+  const existing = tabId == null ? null : await getTab(browser,tabId);
+  const tabs = existing ? [existing] : (await browser.tabs.query({})).filter(t =>
+    tabState(adapter,t) === 'app' && matchesPage(t) && !t.active).sort((a,b) => a.id-b.id);
+  let handoff;
+  for (const tab of tabs) {
+    const state = tabState(adapter,tab);
+    const connection = {adapterId:adapter.id,tabId:tab.id};
+    if (state === 'auth' || state === 'unknown') return {...connection,needsAuth:true};
+    if (state !== 'app') fail('ORIGIN_CHANGED','The account tab left the approved app.');
+    if (tab.active) return {...connection,needsBackground:true};
+    try {
+      if (!await inspectApp(browser,adapter,tab,identity)) {
+        if (!matchesPage(tab)) {
+          await browser.tabs.update(tab.id,{url:new URL(entryPath,adapter.origin).href});
+          return await waitForAccount(browser,adapter,identity,tab.id);
+        }
+        return connection;
+      }
+    } catch (error) {
+      if (!['ACCOUNT_CHANGED','ACCOUNT_UNAVAILABLE'].includes(error.code)) throw error;
+      if (!existing && error.code === 'ACCOUNT_CHANGED') continue;
+    }
+    handoff ??= {...connection,needsAuth:true};
+  }
+  if (handoff) return handoff;
+  const path = entryPath ?? adapter.auth?.entryPath ?? adapter.paths?.[0] ?? '/';
+  const tab = await browser.tabs.create({url:new URL(path,adapter.origin).href,active:false});
+  return await waitForAccount(browser,adapter,identity,tab.id);
+}
+
+async function waitForAccount(browser,adapter,identity,id) {
+  const until = Date.now()+8000;
+  let tab;
+  do {
+    tab = await getTab(browser,id);
+    if (!tab) fail('TAB_CLOSED','The new account tab was closed.');
+    if (tab.status !== 'loading' && !tab.pendingUrl && tabState(adapter,tab) !== 'unknown') break;
+    await new Promise(resolve=>setTimeout(resolve,100));
+  } while (Date.now()<until);
+  // A redirect to a recognized sign-in page can be handed off without inspecting it.
+  return findAccountTab(browser,adapter,identity,id);
 }
 
 // The message dispatcher restricts this to an explicit action on the extension page.

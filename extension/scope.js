@@ -30,11 +30,12 @@ export async function frameTarget(browser, tabId, adapter) {
   return {tabId,documentIds:[matches[0].documentId]};
 }
 
-export async function boundAccount(browser, target, adapter, {verify = false} = {}) {
+export async function boundAccount(browser, target, adapter, {verify = false, identity} = {}) {
   if (!adapter.identity) return null;
   if (adapter.identity.reveal) await assertSiteOperation(browser,adapter,'click');
   const key = bindingKey(adapter);
   const saved = await browser.storage.local.get(key);
+  if (identity && !verify) return identity;
   if (saved[key] && !verify) return saved[key];
   const [{result}] = await browser.scripting.executeScript({
     target,
@@ -50,6 +51,7 @@ export async function boundAccount(browser, target, adapter, {verify = false} = 
     if (verify && value !== result.value) throw new RecipeError('ACCOUNT_CHANGED','The signed-in account differs from the account bound in Settings.');
     return value;
   }
+  if (identity) return checked(identity);
   if (saved[key]) return checked(saved[key]);
   // A single lock also covers concurrent first runs in different tabs.
   return navigator.locks.request(key, async () => {

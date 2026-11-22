@@ -108,7 +108,7 @@ async function navigateTo(browser, tab, adapter, destination) {
   await readyTab(browser, tabId, adapter.origin, current => current.url !== previousUrl);
 }
 
-async function runStep(browser, tabId, adapter, step, inputs) {
+async function runStep(browser, tabId, adapter, step, inputs, identity) {
   const { origin } = adapter;
   const tab = await readyTab(browser, tabId, origin);
   await assertSiteOperation(browser,adapter,step.op);
@@ -116,7 +116,7 @@ async function runStep(browser, tabId, adapter, step, inputs) {
   if (!withinPaths(new URL(tab.url).pathname,adapter.paths)) throw pageError('PATH_NOT_ALLOWED');
   if (adapter.frame && !await hasOrigin(browser,adapter.frame.origin)) throw pageError('PERMISSION_REQUIRED');
   const target = await frameTarget(browser,tabId,adapter);
-  const expected = await boundAccount(browser,target,adapter);
+  const expected = await boundAccount(browser,target,adapter,{identity});
   const context = {origin:adapter.frame?.origin ?? origin, paths:adapter.frame?.paths ?? adapter.paths, identity:adapter.identity, expected};
   if (step.op === 'navigate') {
     let path = step.path;
@@ -182,7 +182,7 @@ export function createDispatcher(browser, loadCatalog) {
     return logWrite.catch(() => {});
   }
 
-  async function run(tabId, adapter, recipe, inputs, runId = crypto.randomUUID()) {
+  async function run(tabId, adapter, recipe, inputs, runId = crypto.randomUUID(), identity) {
     if (runningTabs.has(tabId)) throw new RecipeError('TAB_BUSY', 'A recipe is already using the selected tab.');
     runningTabs.add(tabId);
     const outputs = Object.create(null);
@@ -198,7 +198,7 @@ export function createDispatcher(browser, loadCatalog) {
       for (const [offset, step] of recipe.steps.entries()) {
         index = offset;
         stepStartedAt = performance.now();
-        const execute = operation => runStep(browser, tabId, adapter, operation, inputs);
+        const execute = operation => runStep(browser, tabId, adapter, operation, inputs, identity);
         if (bounds && ['events','range'].includes(step.as) && !ranged) {
           const rangeStep = recipe.steps.find(s => s.as === 'range');
           const rowsStep = recipe.steps.find(s => s.as === 'events');
@@ -244,7 +244,7 @@ export function createDispatcher(browser, loadCatalog) {
     }
   }
 
-  return async (command, args = {}, runtimeRunId) => {
+  return async (command, args = {}, runtimeRunId, identity) => {
     if (typeof command === 'string' && command.startsWith('dev.')) {
       const { devMode } = await browser.storage.local.get('devMode');
       if (devMode !== true) throw new RecipeError('DEV_DISABLED', 'Enable developer tools in extension settings.');
@@ -317,7 +317,7 @@ export function createDispatcher(browser, loadCatalog) {
     if (!recipe) throw new RecipeError('RECIPE_NOT_FOUND', 'This recipe is not installed.');
     const inputs = args.inputs === undefined ? {} : args.inputs;
     validateInputs(recipe, inputs);
-    return await run(args.tabId, adapter, recipe, inputs, runtimeRunId);
+    return await run(args.tabId, adapter, recipe, inputs, runtimeRunId, identity);
   };
 }
 

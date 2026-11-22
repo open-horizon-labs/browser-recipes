@@ -1,6 +1,7 @@
+import {accountFor} from './accounts.js';
 import {createRunDataStore} from './run-data-store.js';
 import { driveWorkflow, validateWorkflowAction } from './workflow-execution.js';
-import { resolveConnection, showConnection } from './run-connection.js';
+import { findAccountTab, resolveConnection, showConnection } from './run-connection.js';
 import { recipeContract, RecipeError, validateInputs, record } from './schema.js';
 import { roleAdapters, workflowInputs } from './workflow.js';
 import { agentDocumentInputs } from './workflow-documents.js';
@@ -94,7 +95,7 @@ export function createRunService({browser,loadBundle,dispatch,allowModel,allowRe
     return {runId:id,kind:args.kind,definitionId:def.id,title:def.title,caller,startedAt:now(),status:'running',steps:[],
       ...(args.adapterId ? {adapterId:args.adapterId} : {})};
   }
-  async function child(args,parent,step,caller,pinnedRevision) {
+  async function child(args,parent,step,caller,pinnedRevision,identity) {
     const bundle = await loadBundle();
     const def = definitionFor(bundle,{kind:'recipe',...args});
     const run = base(def,{kind:'recipe',...args},caller);
@@ -109,7 +110,7 @@ export function createRunService({browser,loadBundle,dispatch,allowModel,allowRe
         step.childRunIds.push(run.runId);
         await save(parent);
       }
-      const result = await dispatch('run',args,run.runId);
+      const result = await dispatch('run',args,run.runId,identity);
       run.status = 'completed';
       run.outputs = Object.keys(result.outputs);
       return {...result,runId:run.runId,adapterId:args.adapterId};
@@ -134,10 +135,23 @@ export function createRunService({browser,loadBundle,dispatch,allowModel,allowRe
         requireValue(old.interactive === interactive && old.definitionId === def.id && old.kind === args.kind && old.adapterId === args.adapterId,'Run ID already in use.');
         return get(id);
       }
+      const labels = def.workflow ? args.accounts : (args.account === undefined ? {} : {target:args.account});
+      requireValue(!def.workflow || args.account === undefined,'Use accounts keyed by workflow role.');
+      requireValue(def.workflow || args.accounts === undefined,'Use account for a recipe.');
+      requireValue(labels === undefined || record(labels),'Provide account labels keyed by workflow role.');
+      const roles = def.workflow?.tabs ?? {target:{adapterId:def.adapter.id}};
+      const named = {};
+      for (const [role,label] of Object.entries(labels ?? {})) {
+        requireValue(Object.hasOwn(roles,role) && args.tabs?.[role] == null && (def.workflow || args.tabId == null),
+          'Choose an account or a tab for each declared role.');
+        const candidates = (def.dependencies ?? [def.adapter]).filter(a=>roleAdapters(roles[role]).includes(a.id));
+        const {adapter,identity} = await accountFor(browser,candidates,label);
+        named[role] = {label,adapterId:adapter.id,identity};
+      }
       const run = base(def,args,caller,id);
       run.revision = await revision(def.workflow ? [def.workflow,def.dependencies] : [def.adapter,def.recipe]);
       run.interactive = interactive;
-      const data = {args,entries:{},answers:{},tabs:{...args.tabs},retainData:args.retainData === true};
+      const data = {named,args,entries:{},answers:{},tabs:{...args.tabs},retainData:args.retainData === true};
       if (!def.workflow) data.tabs.target = args.tabId ?? null;
       active.add(id);
       try {
@@ -169,6 +183,8 @@ export function createRunService({browser,loadBundle,dispatch,allowModel,allowRe
       run.pending = {id:uuid(),tag,stepId:step?.id,label:context.label ?? step?.label ?? run.title,
         tags:[...new Set([tag,...(context.tags ?? [])])],
         ...(Number.isInteger(context.tabId) ? {tabId:context.tabId} : {})};
+      if (['auth','account-review','background-tab','open-app'].includes(tag) && browser.runtime?.getURL)
+        run.pending.reviewUrl = browser.runtime.getURL('runs.html') + '#' + id;
       run.status = 'waiting';
       run.actions ??= [];
       run.actions.push({id:run.pending.id,stepId:step?.id,tags:run.pending.tags,label:run.pending.label,status:'requested',requestedAt:now()});
@@ -181,7 +197,16 @@ export function createRunService({browser,loadBundle,dispatch,allowModel,allowRe
         const boundRole = data.connections?.[role] ? {adapterId:data.connections[role]} : definition;
         let connection;
         try {
-          connection = await resolveConnection(browser,adapters,boundRole,data.tabs[role]);
+          const named = data.named?.[role];
+          if (named) {
+            const {adapter,identity} = await accountFor(browser,adapters.filter(a=>a.id===named.adapterId),named.label);
+            requireValue(identity === named.identity,'The account label changed. Start a new run.');
+            const recipeId = def.recipe?.id ?? def.workflow.steps.find(s=>s.tab===role && s.op==='recipe')?.recipeId;
+            const entry = adapter.recipes.find(r=>r.id===recipeId);
+            const entryPath = data.connections?.[role] && data.entries && Object.values(data.entries).some(e=>!e.pending)
+              ? undefined : entry?.entryPath;
+            connection = await findAccountTab(browser,adapter,identity,data.tabs[role],entryPath,entry?.accountPrefix);
+          } else connection = await resolveConnection(browser,adapters,boundRole,data.tabs[role]);
         } catch (error) {
           if (!['ACCOUNT_CHANGED','ACTIVE_TAB'].includes(error.code)) throw error;
           const key = 'connection/' + role;
@@ -193,13 +218,13 @@ export function createRunService({browser,loadBundle,dispatch,allowModel,allowRe
         data.connections[role] = connection.adapterId;
         data.tabs[role] = connection.tabId;
         resolved[role] = connection.adapterId;
-        if (connection.needsAuth || connection.missingTab) {
-          const reason = connection.missingTab ? 'open-app' : 'auth';
+        if (connection.needsBackground || connection.needsAuth || connection.missingTab) {
+          const reason = connection.needsBackground ? 'background-tab' : connection.missingTab ? 'open-app' : 'auth';
           // Recheck the actual session on every resume. An acknowledgement is never proof of identity.
           const actionKey = 'connection/' + role;
           delete data.answers[actionKey];
           await ask(null,reason,{id:actionKey,role,adapterId:connection.adapterId,tabId:connection.tabId,
-            label:connection.missingTab ? 'Open ' + (definition.label ?? def.title) : 'Sign in to ' + (definition.label ?? def.title)});
+            label:connection.needsBackground ? 'Switch to another tab, then resume' : connection.missingTab ? 'Open ' + (definition.label ?? def.title) : 'Sign in to ' + (data.named?.[role]?.label ?? definition.label ?? def.title)});
         }
       }
       // A standalone recipe uses the same approval and uncertainty checkpoints as a workflow step.
@@ -210,10 +235,10 @@ export function createRunService({browser,loadBundle,dispatch,allowModel,allowRe
         executeRecipe:async (step,inputs,tabId) => {
           const item = touch(step);
           if (!def.workflow) {
-            const response = await dispatch('run',{tabId,adapterId:def.adapter.id,recipeId:def.recipe.id,inputs},run.runId);
+            const response = await dispatch('run',{tabId,adapterId:def.adapter.id,recipeId:def.recipe.id,inputs},run.runId,data.named?.target?.identity);
             return {...response,adapterId:def.adapter.id};
           }
-          return child({tabId,adapterId:resolved[step.tab],recipeId:step.recipeId,inputs},run,item,run.caller);
+          return child({tabId,adapterId:resolved[step.tab],recipeId:step.recipeId,inputs},run,item,run.caller,undefined,data.named?.[step.tab]?.identity);
         },
         requestAction:ask,
         checkpoint:async (step,entry) => {
@@ -270,6 +295,12 @@ export function createRunService({browser,loadBundle,dispatch,allowModel,allowRe
     if (command === 'run') {
       // Preserve the original blocking recipe protocol and result shape.
       const {parentRunId,parentStepId,...request} = args;
+      if (!parentRunId && Object.hasOwn(request,'account')) {
+        const run = await start({...request,kind:'recipe'},caller);
+        if (run.status === 'failed') throw new RecipeError(run.error.code,run.error.message,{runId:run.runId});
+        if (run.status !== 'completed') return run;
+        return {runId:run.runId,adapterId:request.adapterId,outputs:run.result};
+      }
       if (!parentRunId) return child(request,null,null,caller);
       return navigator.locks.request(key(parentRunId),async () => {
         const parent = await get(parentRunId);

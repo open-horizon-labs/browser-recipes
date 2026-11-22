@@ -50,3 +50,21 @@ python3 -m unittest discover -s bridge
 ```
 
 Existing installations can keep their registered host and socket. The original CLI path is an alias for `bridge/browser-recipes`. Keep an unpacked installation in its current directory to preserve its extension ID.
+
+With terminal access enabled, a local caller can review and install a published community workflow. Call `community.review` with `workflowId` and inspect its adapter origins and recipe IDs. Pass the returned `digest` and the same `workflowId` to `community.install`. This uses the extension's fixed community catalog and existing library validation. Site grants are separate.
+
+At a workflow's pending agent step, `runs.agentReview` returns the model inputs and attachment list for the current `runId` and `actionId`. A local caller can then use `runs.agent` with the same IDs, a reviewed prompt, model and selected attachment indices. Both operations enforce the extension's site-sharing settings. This uses the signed-in ChatGPT plan. Inspect the returned text before using `runs.resume` to accept it.
+
+## Run by account label
+
+In **Settings → Site access**, enter the exact identity shown by the app, enter an integration account label, and choose **Label this account**. You can name multiple identities for one adapter. To label an account already pinned in Settings from the CLI:
+
+```sh
+./bridge/browser-recipes accounts.list
+./bridge/browser-recipes accounts.label '{"adapterId":"outlook","label":"alixpartners"}'
+./bridge/browser-recipes accounts.label '{"adapterId":"google-calendar","label":"artium"}'
+./bridge/browser-recipes run '{"adapterId":"outlook","recipeId":"read-calendar-week","account":"alixpartners"}'
+./bridge/browser-recipes runs.start '{"kind":"workflow","workflowId":"outlook-to-google-calendar","accounts":{"source":"alixpartners","destination":"artium"},"inputs":{"firstDay":"2026-11-08","lastDay":"2026-11-14","sourceTimeZone":"America/New_York","destinationTimeZone":"America/New_York"}}'
+```
+
+The extension looks for an inactive app tab and verifies the signed-in identity before using it. If it needs a new tab, it opens the recipe’s entry path (or the adapter’s app entry) in the background. A connection that needs sign-in returns a waiting run with a `pending.reviewUrl`. Open the review, choose **Open app in browser**, sign in, then return to the review to resume. The extension checks the identity again. Existing callers can still supply tab IDs.

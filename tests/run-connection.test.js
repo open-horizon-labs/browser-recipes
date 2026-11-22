@@ -112,3 +112,25 @@ test('background-only adapter checks active tab even when it has no identity sel
   await assert.rejects(resolveConnection(browser,[{...adapter,backgroundOnly:true}],role,7),{code:'ACTIVE_TAB'});
   assert.deepEqual(calls,[]);
 });
+
+test('a labeled run opens an inactive app tab, hands off sign-in, and verifies the identity on resume', async () => {
+  const {findAccountTab} = await import('../extension/run-connection.js');
+  const {browser,calls,identifyAs} = fixture('https://unrelated.example/');
+  const a = {...adapter,identity:{selector:'.account'}};
+  let opened;
+  browser.tabs.create = async spec => {
+    assert.deepEqual(spec,{active:false,url:adapter.origin+'/app/week'});
+    opened = {id:8,url:'https://id.example/login',windowId:3,active:false};
+    return opened;
+  };
+  browser.tabs.get = async () => opened;
+  const identity = 'account@example.com';
+  assert.deepEqual(await findAccountTab(browser,a,identity,null,'/app/week'),{adapterId:'app',tabId:8,needsAuth:true});
+  assert.deepEqual(calls,[]);
+  opened.url = adapter.origin+'/app/week';
+  identifyAs({ok:true,value:'other@example.com'});
+  assert.equal((await findAccountTab(browser,a,identity,8)).needsAuth,true);
+  identifyAs({ok:true,value:identity});
+  assert.deepEqual(await findAccountTab(browser,a,identity,8),{adapterId:'app',tabId:8});
+  assert.ok(calls.every(([op])=>op==='inspect'));
+});

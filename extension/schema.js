@@ -87,8 +87,12 @@ export function recipeContract(recipe) {
 
 export function validateRecipe(recipe, adapter) {
   const { origin, targets = {}, documentPaths = [] } = adapter;
-  shape(recipe, ['id', 'title', 'inputs', 'steps', 'kind', 'effect', 'calendarRange'], 'recipe');
+  shape(recipe, ['id', 'title', 'inputs', 'steps', 'kind', 'effect', 'calendarRange', 'entryPath', 'accountPrefix'], 'recipe');
   expect(id(recipe.id) && string(recipe.title), 'recipe identity');
+  if (recipe.accountPrefix !== undefined) expect(recipe.entryPath && documentPath(recipe.accountPrefix,origin) &&
+    recipe.accountPrefix.endsWith('/'), 'account path prefix');
+  if (recipe.entryPath !== undefined) expect(documentPath(recipe.entryPath,origin) &&
+    (!adapter.paths || adapter.paths.some(p => p.endsWith('/') ? recipe.entryPath.startsWith(p) : recipe.entryPath === p)), 'recipe entry path');
   const inputs = recipe.inputs === undefined ? {} : recipe.inputs;
   expect(record(inputs) && Object.keys(inputs).length <= 32, 'recipe inputs');
   for (const [key, spec] of Object.entries(inputs)) {

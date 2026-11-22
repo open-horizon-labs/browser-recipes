@@ -21,7 +21,7 @@ import uuid
 
 
 HOST = "org.openhorizonlabs.tab_recipes"
-COMMANDS = ("definitions.list", "runs.start", "runs.list", "runs.get", "runs.resume", "runs.cancel", "runs.forget", "catalog", "tabs", "run", "dev.inspect", "dev.test", "dev.failures")
+COMMANDS = ("accounts.list", "accounts.label", "community.review", "community.install", "runs.agentReview", "runs.agent", "definitions.list", "runs.start", "runs.list", "runs.get", "runs.resume", "runs.cancel", "runs.forget", "catalog", "tabs", "run", "dev.inspect", "dev.test", "dev.failures")
 HEADER = struct.Struct("=I")
 MAX_MESSAGE = 1024 * 1024
 RESPONSE_CHUNK_BYTES = 576 * 1024

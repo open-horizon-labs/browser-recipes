@@ -1,3 +1,4 @@
+import {accountKey,namedAccounts,setAccountLabel} from './accounts.js';
 import { companionAgentRequest, companionPermission, companionSetting } from './chatgpt-agent-transport.js';
 import { bindingKey, operationKey, operationOrigins, siteOperations } from './scope.js';
 import { grantSites, hasOrigin } from './access.js';
@@ -109,6 +110,30 @@ async function renderOrigins() {
         show('Expected account saved.');
       });
       access.append(expectedLabel, pin, reset);
+      const alias = document.createElement('input');
+      alias.placeholder = 'e.g. Work Outlook';
+      const aliasLabel = document.createElement('label');
+      aliasLabel.append('Integration account label ',alias);
+      const add = document.createElement('button');
+      add.type = 'button';
+      add.textContent = 'Label this account';
+      add.onclick = async () => {
+        try { await setAccountLabel(chrome,adapter,alias.value,expected.value); await renderOrigins(); }
+        catch (error) { show(error.message); }
+      };
+      access.append(aliasLabel,add);
+      for (const entry of await namedAccounts(chrome,adapter)) {
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.textContent = 'Remove label ' + entry.label + ' (' + entry.identity + ')';
+        remove.onclick = async () => {
+          const key = accountKey(adapter);
+          await navigator.locks.request(key,async () =>
+            chrome.storage.local.set({[key]:(await namedAccounts(chrome,adapter)).filter(a=>a.label!==entry.label)}));
+          await renderOrigins();
+        };
+        access.append(remove);
+      }
     }
     origins.append(item);
   }

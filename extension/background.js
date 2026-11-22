@@ -1,7 +1,12 @@
+import {bindingKey,adapterGranted} from './scope.js';
+import {namedAccounts,setAccountLabel} from './accounts.js';
 import { developerObserver } from './dev-observer.js';
 import { createDispatcher, safeError } from './runtime.js';
 import { nativeResponseFrames } from './native-response.js';
-import { originOf } from './schema.js';
+import {fetchCommunity,communitySelection} from './community.js';
+import {mergeDefinitions,updateDefinitions} from './library.js';
+import {bundled} from './settings.js';
+import { RecipeError, originOf } from './schema.js';
 import {createRunService} from './run-service.js';
 import {chatgptAgentRequest} from './chatgpt-agent-transport.js';
 import { getCatalog, installedBundle, assertWorkflowModelAccess, assertRecipeModelAccess } from './settings.js';
@@ -56,10 +61,55 @@ async function manageBridge() {
   bridgeStatus = 'Bridge open';
 }
 
+// The CLI can install only a reviewed workflow from the same fixed source as Settings.
+async function communityWorkflow(command,args) {
+  const catalog = await fetchCommunity();
+  const workflow = catalog.workflows.find(w => w.id === args.workflowId);
+  if (!workflow) throw new RecipeError('INVALID_ARGUMENTS','Unknown community workflow.');
+  const selection = communitySelection(catalog,{workflow});
+  const bytes = new TextEncoder().encode(JSON.stringify(selection));
+  const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b => b.toString(16).padStart(2,'0')).join('');
+  const review = {workflowId:workflow.id,digest,adapters:selection.adapters.map(a => ({
+    id:a.id,origin:a.origin,recipes:a.recipes.map(r => r.id),
+  }))};
+  if (command === 'community.review') return review;
+  if (args.digest !== digest) throw new RecipeError('INVALID_ARGUMENTS','Review this workflow revision before installing.');
+  await updateDefinitions(await bundled,local => {
+    for (const a of selection.adapters) {
+      const previous = local.adapters.find(item => item.id === a.id);
+      if (previous && previous.origin !== a.origin) throw new RecipeError('INVALID_ARGUMENTS','Installed adapter uses another origin. Review in Settings.');
+    }
+    return mergeDefinitions(local,selection);
+  },async () => {});
+  return review;
+}
+
+async function terminalRequest(command,args) {
+  if (command === 'accounts.list' || command === 'accounts.label') {
+    const available = [];
+    for (const adapter of await getCatalog()) {
+      if (!adapter.identity || !await adapterGranted(chrome,adapter)) continue;
+      const key = bindingKey(adapter);
+      const identity = (await chrome.storage.local.get(key))[key];
+      if (command === 'accounts.label' && args.adapterId === adapter.id) {
+        if (!identity) throw new RecipeError('ACCOUNT_NOT_CONFIGURED','Set the expected account in Settings first.');
+        await setAccountLabel(chrome,adapter,args.label,identity);
+        return {adapterId:adapter.id,label:args.label.trim(),identity};
+      }
+      available.push({adapterId:adapter.id,expectedAccount:identity,accounts:await namedAccounts(chrome,adapter)});
+    }
+    if (command === 'accounts.label') throw new RecipeError('ACCOUNT_NOT_CONFIGURED','Choose an approved adapter with an account identity.');
+    return available;
+  }
+  if (command === 'community.review' || command === 'community.install') return communityWorkflow(command,args);
+  if (publicCommands.has(command) || command === 'runs.agentReview' || command === 'runs.agent') return runService(command,args,'terminal');
+  return dispatch(command,args);
+}
+
 async function reply(port, { id, command, args }) {
   let response;
   try {
-    response = { id, result: await (publicCommands.has(command) ? runService(command,args,'terminal') : dispatch(command,args)) };
+    response = { id, result: await terminalRequest(command,args) };
   } catch (error) {
     response = { id, error: safeError(error) };
   }
