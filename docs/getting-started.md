@@ -25,11 +25,11 @@ The build creates the extension in `dist`.
 
 1. Open **Browser Recipes** from the toolbar. Choose **Browse workflows**, then **Review install** beside **Copy Outlook events to Google Calendar**. In an existing installation, use **Settings → Browse community catalog**.
 2. Review the workflow, adapters, and recipes, then choose **Install changes**. Follow **Set up Copy Outlook events to Google Calendar**.
-3. Grant access to the Outlook host you actually use and to Google Calendar. Open both calendars in this browser profile and display the same week in each. Use **Refresh tabs** and choose the source and destination tabs by title.
+3. Grant access to the Outlook host you actually use and to Google Calendar. Open both calendars in this browser profile and choose Week view in each. Use **Refresh tabs** and choose the source and destination tabs by title.
 
 ## Preview the missing meetings
 
-1. Choose **Start workflow**. In Runs, enter the first and last dates shown and the time zone of each calendar.
+1. Choose **Start workflow**. In Runs, enter the first and last day to compare. Both tabs navigate to that range. Confirm their time zones when prompted.
 2. Choose **Review model request** and check the data to share. Use **Send to ChatGPT** or **Prepare prompt for manual chat**. Review the reply and choose **Use reviewed reply**.
 3. Inspect the proposed blocks. If Outlook shows meetings at 9 and 11 and Google already has the 9 o’clock block, only the 11 o’clock block should be offered. Stop here to preview, or select the blocks to carry forward. Titles default to **Busy**. The workflow asks you to approve the write before importing.
 
@@ -63,7 +63,7 @@ In Browser Recipes settings, check **Allow programs on this computer to run reci
 ./bridge/browser-recipes run '{"tabId":123,"adapterId":"outlook","recipeId":"read-calendar-week","inputs":{}}'
 ```
 
-The result includes a `runId` and the visible week’s events in `outputs.events`. You can inspect the result locally before deciding what to share.
+The result includes a `runId` and the visible week’s events in `outputs.events`. To read specific dates, pass both bounds, for example `"inputs":{"first-day":"2026-11-08","last-day":"2026-11-14"}`. Both dates are inclusive.
 
 ![Settings showing a connected terminal helper](images/getting-started/connected.png)
 
