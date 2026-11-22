@@ -1,3 +1,4 @@
+import {renderRecipeOutputs} from './recipe-outputs.js';
 import {communityBrowser} from './community.js';
 import {bundled} from './settings.js';
 import {combined, localDefinitions, mergeDefinitions, removeDefinition, updateDefinitions} from './library.js';
@@ -134,13 +135,40 @@ export async function initializeLibrary(refreshSettings) {
         const url = 'runner.html?' + new URLSearchParams({adapter:a.id,recipe:r.id});
         const ready = contract.effect === 'read' && !Object.values(contract.inputs).some(i => i.required);
         const actions = element('div');
+        const result = element('div');
+        result.className = 'recipe-result';
+        result.hidden = true;
         if (ready) {
           const run = element('button','Run');
           run.type = 'button';
           run.setAttribute('aria-label','Run ' + r.title);
-          run.onclick = () => {
-            sessionStorage.setItem('launch-read-recipe',a.id + '/' + r.id);
-            location.assign(url);
+          const urls = [];
+          run.onclick = async () => {
+            run.disabled = true;
+            for (const url of urls.splice(0)) URL.revokeObjectURL(url);
+            result.replaceChildren();
+            result.hidden = false;
+            const progress = element('p','Running…');
+            progress.setAttribute('role','status');
+            result.append(progress);
+            try {
+              const reply = await chrome.runtime.sendMessage({command:'recipe.quickRun',args:{adapterId:a.id,recipeId:r.id}});
+              if (!reply?.result) throw new Error(reply?.error?.message ?? 'The extension returned no result.');
+              const run = reply.result;
+              progress.textContent = run.status === 'failed' ? run.error.message
+                : run.pending?.label ?? 'Results';
+              if (run.result) renderRecipeOutputs(run.result,result,urls);
+              const review = element('a',run.status === 'waiting' ? 'Continue in Runs' : 'Inspect run');
+              review.href = 'runs.html#' + encodeURIComponent(run.runId);
+              result.append(review);
+              if (run.error?.code === 'PERMISSION_REQUIRED') {
+                const access = element('a','Open site access');
+                access.href = '#site-access';
+                result.append(document.createTextNode(' · '),access);
+              }
+            } catch (error) {
+              progress.textContent = error.message;
+            } finally { run.disabled = false; }
           };
           actions.append(run,document.createTextNode(' '));
         }
@@ -148,7 +176,7 @@ export async function initializeLibrary(refreshSettings) {
         launch.href = url;
         launch.setAttribute('aria-label','Set up ' + r.title);
         actions.append(launch);
-        row.append(recipe,actions);
+        row.append(recipe,actions,result);
         panel.append(row);
       }
       if (editable) removal(panel,'adapter',a);

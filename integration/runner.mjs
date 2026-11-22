@@ -19,13 +19,13 @@ export async function verifyRunner({ browser, worker, extensionOrigin, target, a
   const runner = await browser.newPage();
   try {
     await runner.goto(extensionOrigin + '/runner.html');
-    await runner.getByText('Select the tab you want the recipe to use.').waitFor();
+    await runner.locator('#quick-reads').waitFor();
     await runner.getByText('Set up a run',{exact:true}).click();
     const tab = runner.getByLabel('Browser tab');
     const recipe = runner.getByLabel('Recipe', { exact: true });
-    assert.equal(await tab.inputValue(), '');
+    assert.equal(await tab.inputValue(), 'open-app');
     assert.equal(await runner.getByRole('button', { name: 'Run here', exact: true }).isDisabled(), true);
-    await tab.selectOption({ index: 1 });
+    await tab.selectOption({ index: 2 });
     const focusedTabId = await active();
     assert.notEqual(Number(await tab.inputValue()), focusedTabId);
     const quick = runner.locator('#read-list');
@@ -38,17 +38,17 @@ export async function verifyRunner({ browser, worker, extensionOrigin, target, a
     const adapter = runner.locator('#adapter-list > details').filter({has:runner.getByRole('button',{name:'Run Open ticket 42 and read its title',includeHidden:true})});
     await adapter.locator(':scope > summary').click();
     await adapter.getByRole('button',{name:'Run Open ticket 42 and read its title'}).click();
-    await runner.getByRole('link',{name:'Inspect run'}).waitFor();
-    assert.ok(await runner.locator('#results').isVisible());
+    await adapter.getByRole('link',{name:'Inspect run'}).waitFor();
+    assert.match(runner.url(), /options\.html$/);
+    assert.match(await adapter.locator('.recipe-result pre').textContent(),/Ticket 42/);
     await runner.reload();
-    await runner.waitForFunction(() => document.querySelector('#recipe')?.value === 'workshop/read-ticket');
-    assert.ok(await runner.locator('#results').isHidden());
-    await runner.goto(extensionOrigin + '/options.html');
+    await adapter.locator(':scope > summary').click();
+    assert.equal(await adapter.getByRole('link',{name:'Inspect run'}).count(),0);
     const section = runner.locator('#adapter-list > details').filter({has:runner.getByRole('link',{name:'Set up '+uploadRecipe.title,includeHidden:true})});
-    await section.locator(':scope > summary').click();
     await section.getByRole('link',{name:'Set up '+uploadRecipe.title}).click();
     await runner.waitForFunction(() => document.querySelector('#recipe')?.value === 'workshop/runner-upload');
-    assert.equal(await tab.inputValue(),String(await worker.evaluate(async url => (await chrome.tabs.query({})).find(t=>t.url===url).id,target.url())));
+    assert.equal(await tab.inputValue(),'open-app');
+    await tab.selectOption(String(await worker.evaluate(async url => (await chrome.tabs.query({})).find(t=>t.url===url).id,target.url())));
     await runner.getByLabel('message', { exact: true }).fill('Sent');
     await runner.getByLabel('file', { exact: true }).setInputFiles({
       name: 'example.txt', mimeType: 'text/plain', buffer: Buffer.from('Hello'),

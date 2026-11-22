@@ -6,7 +6,7 @@ import { nativeResponseFrames } from './native-response.js';
 import {fetchCommunity,communitySelection} from './community.js';
 import {mergeDefinitions,updateDefinitions} from './library.js';
 import {bundled} from './settings.js';
-import { RecipeError, originOf } from './schema.js';
+import { RecipeError, originOf, recipeContract } from './schema.js';
 import {createRunService} from './run-service.js';
 import {chatgptAgentRequest} from './chatgpt-agent-transport.js';
 import { getCatalog, installedBundle, assertWorkflowModelAccess, assertRecipeModelAccess } from './settings.js';
@@ -164,6 +164,15 @@ async function runnerData() {
 
 async function handlePageRequest({ command, args }) {
   try {
+    if (command === 'recipe.quickRun') {
+      const adapter = (await getCatalog()).find(a=>a.id === args.adapterId);
+      const recipe = adapter?.recipes.find(r=>r.id === args.recipeId);
+      if (!recipe) throw new RecipeError('RECIPE_NOT_FOUND','This recipe is no longer installed.');
+      const contract = recipeContract(recipe);
+      if (contract.effect !== 'read' || Object.values(contract.inputs).some(input=>input.required))
+        throw new RecipeError('SETUP_REQUIRED','Open run options to use this recipe.');
+      return {result:await runService('runs.start',{kind:'recipe',adapterId:adapter.id,recipeId:recipe.id,autoConnect:true})};
+    }
     if (pageCommands.has(command)) return {result:await runService(command,args)};
     if (command === 'runner.list') return { result: await runnerData() };
     return { result: await (observerCommands.has(command) ? observerCommands.get(command)(args) : dispatch(command, args)) };
@@ -184,7 +193,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   const runs = page === chrome.runtime.getURL('runs.html');
   if (runner || agent || runs) {
     const command = message?.command;
-    if (pageCommands.has(command) || ['catalog', 'tabs', 'runner.list'].includes(command) ||
+    if (pageCommands.has(command) || command === 'recipe.quickRun' || ['catalog', 'tabs', 'runner.list'].includes(command) ||
         command === 'dev.capture' ||
         agent && ['dev.inspect','dev.test','dev.failures','dev.record.start','dev.record.stop'].includes(command)) {
       void handlePageRequest(message).then(respond);
@@ -193,6 +202,10 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     return false;
   }
   if (page !== chrome.runtime.getURL('options.html')) return false;
+  if (message?.command === 'recipe.quickRun') {
+    void handlePageRequest(message).then(respond);
+    return true;
+  }
   if (message?.command === 'bridge.refresh') {
     void refreshBridge().then(() => respond({ status: bridgeStatus }));
     return true;

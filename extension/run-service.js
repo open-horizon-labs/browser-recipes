@@ -1,7 +1,7 @@
 import {accountFor} from './accounts.js';
 import {createRunDataStore} from './run-data-store.js';
 import { driveWorkflow, validateWorkflowAction } from './workflow-execution.js';
-import { findAccountTab, resolveConnection, showConnection } from './run-connection.js';
+import { findAccountTab, findRecipeTab, resolveConnection, showConnection } from './run-connection.js';
 import { recipeContract, RecipeError, validateInputs, record } from './schema.js';
 import { roleAdapters, workflowInputs } from './workflow.js';
 import { agentDocumentInputs } from './workflow-documents.js';
@@ -206,6 +206,8 @@ export function createRunService({browser,loadBundle,dispatch,allowModel,allowRe
             const entryPath = data.connections?.[role] && data.entries && Object.values(data.entries).some(e=>!e.pending)
               ? undefined : entry?.entryPath;
             connection = await findAccountTab(browser,adapter,identity,data.tabs[role],entryPath,entry?.accountPrefix);
+          } else if (def.recipe && data.args.autoConnect === true) {
+            connection = await findRecipeTab(browser,def.adapter,def.recipe,data.tabs[role]);
           } else connection = await resolveConnection(browser,adapters,boundRole,data.tabs[role]);
         } catch (error) {
           if (!['ACCOUNT_CHANGED','ACTIVE_TAB'].includes(error.code)) throw error;

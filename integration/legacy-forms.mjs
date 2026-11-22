@@ -118,7 +118,7 @@ try {
 
   const runner = await browser.newPage();
   await runner.goto(extensionOrigin + '/runner.html');
-  await runner.getByText('Select the tab you want the recipe to use.').waitFor();
+  await runner.locator('#tab option[value="open-app"]').waitFor({state:'attached'});
   const setup = runner.locator('#recipe-setup');
   if (!await setup.evaluate(node => node.open)) await setup.locator('summary').click();
   const { result } = await extensionRequest(runner, 'tabs');

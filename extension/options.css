@@ -158,3 +158,6 @@ body main > details { border-block-start: 1px solid var(--line); padding-block: 
   .app-nav a { padding-inline: .3rem; }
   .app-nav svg { width: .85rem; height: .85rem; }
 }
+.recipe-result { grid-column: 1 / -1; min-width: 0; padding: .65rem .8rem; background: var(--surface); }
+.recipe-result pre { white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto; max-height: 16rem; }
+.recipe-result h3 { margin: .6rem 0 .2rem; }

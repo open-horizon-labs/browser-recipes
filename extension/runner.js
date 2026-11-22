@@ -1,3 +1,4 @@
+import {renderRecipeOutputs} from './recipe-outputs.js';
 import {watchTabs} from './watch-tabs.js';
 import {recipeContract} from './schema.js';
 import {recipeEditor} from './recipe-edit-ui.js';
@@ -29,22 +30,8 @@ const launchParams = new URLSearchParams(location.search);
 let launchRecipe = launchParams.has('adapter') && launchParams.has('recipe')
   ? {adapter:launchParams.get('adapter'), id:launchParams.get('recipe')} : null;
 
-const requestedRead = sessionStorage.getItem('launch-read-recipe');
-sessionStorage.removeItem('launch-read-recipe');
-
 function canQuickRun(recipe) {
   return recipe.effect === 'read' && !Object.values(recipe.inputs).some(input => input.required);
-}
-
-function selectTarget(adapterId, recipeId) {
-  const matches = tabs.filter(t => t.adapterIds.includes(adapterId));
-  tabPicker.value = matches.length === 1 ? String(matches[0].tabId) : openApp;
-  updateRecipes(adapterId + '/' + recipeId);
-  if (matches.length > 1) {
-    choose('Several app tabs are open. Choose the tab to use.');
-    tabPicker.focus();
-  }
-  return matches.length <= 1;
 }
 
 function renderQuickReads() {
@@ -66,11 +53,7 @@ function renderQuickReads() {
       app.textContent = adapter.title;
       button.append(name,app);
       button.onclick = () => {
-        if (controls.disabled) return;
-        clearResults();
-        inputKey = undefined;
-        if (selectTarget(adapter.id,recipe.id)) form.requestSubmit(document.querySelector('#start-run'));
-        else { setup.open = true; tabPicker.focus(); }
+        if (!controls.disabled) void quickRun(adapter.id,recipe.id,recipe.title);
       };
       list.append(button);
     }
@@ -172,8 +155,7 @@ function updateRecipes(previous = recipePicker.value, announce = true) {
   if (recipes.some(recipe => recipe.key === previous)) recipePicker.value = previous;
   updateInputs();
   if (!announce) return;
-  if (tabPicker.value === openApp && recipePicker.value) choose('Start the run to find or open the app.');
-  else if (tabPicker.value === openApp) choose(setup.open ? 'Choose a recipe. If you need to sign in, the run pauses.' : '');
+  if (tabPicker.value === openApp) choose('');
   else if (!tab) choose(tabs.length ? 'Select the tab you want the recipe to use.' : 'Open a tab for a site you’ve allowed.');
   else if (!recipes.length) choose('This tab has no installed recipes.');
   else choose('');
@@ -182,7 +164,6 @@ function updateRecipes(previous = recipePicker.value, announce = true) {
 let refreshing = false;
 async function refresh(initial = false) {
   refreshing = true;
-  let autoStarted = false;
   if (initial) choose('Finding tabs and recipes…');
   try {
     const [availableSites,installed] = await Promise.all([request('runner.list'),getCatalog()]);
@@ -203,27 +184,21 @@ async function refresh(initial = false) {
       const label = origin && name !== origin ? `${name} · ${origin}` : name;
       tabPicker.append(new Option(label, String(tabId)));
     }
-    if (catalog.length) tabPicker.append(new Option('Find or open the app for my recipe', openApp));
+    if (catalog.length) tabPicker.insertBefore(new Option('Choose automatically',openApp),tabPicker.options[1] ?? null);
     if (selected === openApp || tabs.some(item => String(item.tabId) === selected)) tabPicker.value = selected;
-    else if (!tabs.length && catalog.length) tabPicker.value = openApp;
+    else if (catalog.length) tabPicker.value = openApp;
     renderQuickReads();
     const available = launchRecipe && catalog.find(a => a.id === launchRecipe.adapter)?.recipes.find(r => r.id === launchRecipe.id);
     if (available) {
       const {adapter,id} = launchRecipe;
       launchRecipe = null;
-      setup.open = requestedRead !== adapter + '/' + id;
-      const ready = selectTarget(adapter,id);
-      if (!ready) { setup.open = true; tabPicker.focus(); }
-      if (ready && requestedRead === adapter + '/' + id && canQuickRun(available)) {
-        controls.disabled = false;
-        autoStarted = true;
-        form.requestSubmit(document.querySelector('#start-run'));
-        return;
-      }
+      setup.open = true;
+      tabPicker.value = openApp;
+      updateRecipes(adapter + '/' + id);
     } else {
       const changedTab = selected !== tabPicker.value;
       updateRecipes(recipePicker.value, initial || changedTab);
-      if (selected && !tabPicker.value) { setup.open = true; choose('That tab closed or left the site. Choose another tab.'); }
+      if (selected && selected !== openApp && changedTab) choose('That tab closed or left the site. The next run will choose a tab automatically.');
     }
     const noAccess = !catalog.length;
     document.querySelector('#first-workflow').hidden = !noAccess;
@@ -244,7 +219,7 @@ async function refresh(initial = false) {
     choose(error.message, true);
   } finally {
     refreshing = false;
-    if (initial && !autoStarted) controls.disabled = false;
+    if (initial) controls.disabled = false;
   }
 }
 
@@ -272,28 +247,40 @@ async function gatherInputs() {
 }
 
 function renderOutput(outputs) {
-  for (const [name, value] of Object.entries(outputs)) {
-    const heading = document.createElement('h3');
-    heading.textContent = name;
-    output.append(heading);
-    if (value?.kind === 'file') {
-      const bytes = Uint8Array.from(atob(value.base64), character => character.charCodeAt(0));
-      const url = URL.createObjectURL(new Blob([bytes], { type: value.mimeType }));
-      downloadUrls.push(url);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = value.name;
-      link.textContent = `Download ${value.name}`;
-      output.append(link);
-    } else {
-      const text = document.createElement('pre');
-      text.textContent = value?.kind === 'markdown'
-        ? value.markdown
-        : typeof value === 'string' ? value : JSON.stringify(value, null, 2);
-      output.append(text);
-    }
-  }
+  renderRecipeOutputs(outputs,output,downloadUrls);
   results.hidden = !output.childElementCount;
+}
+
+async function quickRun(adapterId,recipeId,title) {
+  controls.disabled = true;
+  clearResults();
+  choose('Running ' + title + '…');
+  try {
+    showRun(await request('recipe.quickRun',{adapterId,recipeId}),title);
+  } catch (error) {
+    choose(error.message,true);
+  } finally {
+    controls.disabled = false;
+  }
+}
+
+function showRun(record, title, retainData = false) {
+  const href = 'runs.html#' + encodeURIComponent(record.runId);
+  if (record.status === 'waiting' || retainData) {
+    location.assign(href);
+    return;
+  }
+  if (record.status === 'failed') {
+    choose(record.error.message,true);
+  } else {
+    renderOutput(record.result ?? {});
+    choose(title + ' completed. ');
+  }
+  const link = document.createElement('a');
+  link.href = href;
+  link.textContent = 'Inspect run';
+  status.append(link);
+  if (!results.hidden) results.scrollIntoView({block:'nearest'});
 }
 
 form.addEventListener('submit', async event => {
@@ -308,19 +295,10 @@ form.addEventListener('submit', async event => {
     const inputs = await gatherInputs();
     if (event.submitter !== runButton) {
       const retainData = document.querySelector('#retain-results').checked;
-      const record = await request('runs.start', { kind: 'recipe', tabId, adapterId: recipe.adapterId, recipeId: recipe.id, inputs, retainData,
+      const record = await request('runs.start', { kind: 'recipe', tabId, autoConnect: tabId === null,
+        adapterId: recipe.adapterId, recipeId: recipe.id, inputs, retainData,
         reviewRecipes: document.querySelector('#review-shared').checked });
-      const href = 'runs.html#' + encodeURIComponent(record.runId);
-      if (record.result === undefined || retainData) location.assign(href);
-      else {
-        renderOutput(record.result);
-        choose(`${recipe.title} completed. `);
-        const link = document.createElement('a');
-        link.href = href;
-        link.textContent = 'Inspect run';
-        status.append(link);
-        results.scrollIntoView({block:'nearest'});
-      }
+      showRun(record,recipe.title,retainData);
       return;
     }
     const { outputs, runId } = await request('run', { tabId, adapterId: recipe.adapterId, recipeId: recipe.id, inputs });

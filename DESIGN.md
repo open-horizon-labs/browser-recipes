@@ -5,3 +5,5 @@ Use a deep-blue navigation band, pale blue page background, white controls, and 
 Recipes opens with a compact, searchable list of reads. Put tab selection, inputs, and result retention under **Set up a run**. In Workflows lead with the task and its apps. In Runs lead with the result or the next thing the user needs to do. Use flat sections and dividers for lists and settings.
 
 Use action labels such as **Run**, **Install**, **Sign in**, and **Approve**. Keep recipe, workflow, and run distinct. Use technical terms in developer tools and failure details. Keep focus visible and support 320-pixel panels. A slight change in background color marks a new result and respects reduced motion.
+
+A Run button starts a run where the user clicked it. Settings shows the result beside the recipe. Quick run shows it in the panel. Pick a suitable tab in the current window or open the app in the background. Run options allow an explicit tab and custom inputs. Send the user to Runs when they need to sign in or review an action.

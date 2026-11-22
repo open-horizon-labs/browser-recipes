@@ -86,19 +86,49 @@ export async function resolveConnection(browser, adapters, role, tabId) {
   return {adapterId:adapter.id, tabId:tab.id, needsAuth};
 }
 
+function recipePage(tab, entryPath, accountPrefix) {
+  if (!entryPath) return true;
+  let path = new URL(tab.pendingUrl || tab.url).pathname;
+  if (accountPrefix && path.startsWith(accountPrefix)) {
+    const parts = path.slice(accountPrefix.length).split('/');
+    parts.shift();
+    path = accountPrefix.slice(0,-1).replace(/[^/]+$/,'') + parts.join('/');
+  }
+  return path === entryPath || path.startsWith(entryPath.replace(/\/$/,'')+'/');
+}
+
+export async function findRecipeTab(browser, adapter, recipe, tabId) {
+  await approved(browser,adapter);
+  const existing = tabId == null ? null : await getTab(browser,tabId);
+  if (existing) {
+    if (adapter.backgroundOnly && existing.active && tabState(adapter,existing) === 'app')
+      return {adapterId:adapter.id,tabId,needsBackground:true};
+    return findAccountTab(browser,adapter,undefined,tabId);
+  }
+  const windowTabs = await browser.tabs.query({lastFocusedWindow:true});
+  const candidates = windowTabs.filter(tab => tabState(adapter,tab) === 'app' &&
+    (!adapter.backgroundOnly || !tab.active) && !tab.pendingUrl && tab.status !== 'loading' &&
+    recipePage(tab,recipe.entryPath,recipe.accountPrefix));
+  candidates.sort((a,b) => Number(b.active)-Number(a.active) ||
+    (b.lastAccessed ?? 0)-(a.lastAccessed ?? 0) || a.id-b.id);
+  for (const tab of candidates) {
+    try {
+      if (!await inspectApp(browser,adapter,tab)) return {adapterId:adapter.id,tabId:tab.id};
+    } catch (error) {
+      if (!['ACCOUNT_CHANGED','ACCOUNT_UNAVAILABLE','FRAME_UNAVAILABLE'].includes(error.code)) throw error;
+    }
+  }
+  const path = recipe.entryPath ?? adapter.auth?.entryPath ?? adapter.paths?.[0] ?? '/';
+  const windowId = windowTabs[0]?.windowId;
+  const tab = await browser.tabs.create({url:new URL(path,adapter.origin).href,active:false,
+    ...(Number.isInteger(windowId) ? {windowId} : {})});
+  return waitForAccount(browser,adapter,undefined,tab.id);
+}
+
 // A labeled run may only inspect tabs for its approved adapter. Keep the chosen tab across handoffs.
 export async function findAccountTab(browser, adapter, identity, tabId, entryPath, accountPrefix) {
   await approved(browser,adapter);
-  const matchesPage = tab => {
-    if (!entryPath) return true;
-    let path = new URL(tab.pendingUrl || tab.url).pathname;
-    if (accountPrefix && path.startsWith(accountPrefix)) {
-      const parts = path.slice(accountPrefix.length).split('/');
-      parts.shift();
-      path = accountPrefix.slice(0,-1).replace(/[^/]+$/,'') + parts.join('/');
-    }
-    return path === entryPath || path.startsWith(entryPath.replace(/\/$/,'')+'/');
-  };
+  const matchesPage = tab => recipePage(tab,entryPath,accountPrefix);
   const existing = tabId == null ? null : await getTab(browser,tabId);
   const tabs = existing ? [existing] : (await browser.tabs.query({})).filter(t =>
     tabState(adapter,t) === 'app' && matchesPage(t) && !t.active).sort((a,b) => a.id-b.id);
@@ -108,7 +138,7 @@ export async function findAccountTab(browser, adapter, identity, tabId, entryPat
     const connection = {adapterId:adapter.id,tabId:tab.id};
     if (state === 'auth' || state === 'unknown') return {...connection,needsAuth:true};
     if (state !== 'app') fail('ORIGIN_CHANGED','The account tab left the approved app.');
-    if (tab.active) return {...connection,needsBackground:true};
+    if (tab.active && (identity || adapter.backgroundOnly)) return {...connection,needsBackground:true};
     try {
       if (!await inspectApp(browser,adapter,tab,identity)) {
         if (!matchesPage(tab)) {

@@ -134,3 +134,27 @@ test('a labeled run opens an inactive app tab, hands off sign-in, and verifies t
   assert.deepEqual(await findAccountTab(browser,a,identity,8),{adapterId:'app',tabId:8});
   assert.ok(calls.every(([op])=>op==='inspect'));
 });
+
+test('automatic recipe launch uses the best matching open tab or opens an inactive app tab', async () => {
+  const {findRecipeTab} = await import('../extension/run-connection.js');
+  const {browser,tab,calls} = fixture('https://app.example/app/week');
+  tab.active = true;
+  const recent = {...tab,id:9,active:false,lastAccessed:100};
+  browser.tabs.query = async query => {
+    assert.deepEqual(query,{lastFocusedWindow:true});
+    return [recent,tab];
+  };
+  const recipe = {entryPath:'/app/week'};
+  assert.equal((await findRecipeTab(browser,adapter,recipe)).tabId,7);
+  assert.equal((await findRecipeTab(browser,{...adapter,backgroundOnly:true},recipe)).tabId,9);
+  assert.deepEqual(calls,[]);
+  const fresh = {id:8,url:'https://app.example/app/day',active:false};
+  browser.tabs.create = async args => {
+    assert.deepEqual(args,{url:adapter.origin+'/app/day',active:false,windowId:3});
+    return fresh;
+  };
+  browser.tabs.get = async () => fresh;
+  assert.equal((await findRecipeTab(browser,adapter,{entryPath:'/app/day'})).tabId,8);
+  fresh.url = 'https://id.example/login';
+  assert.equal((await findRecipeTab(browser,adapter,{entryPath:'/app/day'})).needsAuth,true);
+});
