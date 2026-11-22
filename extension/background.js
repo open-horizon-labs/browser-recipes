@@ -1,5 +1,6 @@
 import { createDispatcher, safeError } from './runtime.js';
 import { nativeResponseFrames } from './native-response.js';
+import { originOf } from './schema.js';
 import { getCatalog } from './settings.js';
 
 const nativeHost = 'org.openhorizonlabs.tab_recipes';
@@ -68,9 +69,54 @@ chrome.runtime.onInstalled.addListener(() => void refreshBridge());
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === 'native-bridge') void refreshBridge();
 });
-chrome.action.onClicked.addListener(() => void chrome.runtime.openOptionsPage());
+let panelConfigured = false;
+if (chrome.sidePanel?.setPanelBehavior) {
+  void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).then(
+    () => { panelConfigured = true; },
+    () => {}
+  );
+}
+chrome.action.onClicked.addListener(() => {
+  if (!panelConfigured) void chrome.tabs.create({ url: chrome.runtime.getURL('runner.html') });
+});
+
+async function runnerData() {
+  const [catalog, eligibleTabs] = await Promise.all([dispatch('catalog'), dispatch('tabs')]);
+  const tabs = await Promise.all(eligibleTabs.map(async candidate => {
+    try {
+      const tab = await chrome.tabs.get(candidate.tabId);
+      const origin = originOf(tab.pendingUrl || tab.url);
+      if (catalog.some(adapter => candidate.adapterIds.includes(adapter.id) && adapter.origin === origin)) {
+        return { ...candidate, title: tab.title };
+      }
+    } catch {
+      // The tab may close while the runner refreshes.
+    }
+    return null;
+  }));
+  return { catalog, tabs: tabs.filter(Boolean) };
+}
+
+async function handlePageRequest({ command, args }) {
+  try {
+    return { result: command === 'runner.list' ? await runnerData() : await dispatch(command, args) };
+  } catch (error) {
+    return { error: safeError(error) };
+  }
+}
+
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
+  const runner = sender.url === chrome.runtime.getURL('runner.html');
+  const agent = sender.url === chrome.runtime.getURL('agent.html');
+  if (runner || agent) {
+    const command = message?.command;
+    if (['catalog', 'tabs', 'run', 'runner.list'].includes(command)) {
+      void handlePageRequest(message).then(respond);
+      return true;
+    }
+    return false;
+  }
   if (sender.url !== chrome.runtime.getURL('options.html')) return false;
   if (message?.command === 'bridge.refresh') {
     void refreshBridge().then(() => respond({ status: bridgeStatus }));

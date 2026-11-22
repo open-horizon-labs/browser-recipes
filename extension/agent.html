@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Calendar sync · Browser Recipes</title>
+  <link rel="stylesheet" href="options.css"><link rel="stylesheet" href="agent.css">
+  <script type="module" src="agent-ui.js"></script>
+</head>
+<body><main>
+  <nav><a href="runner.html">Browser Recipes</a> / Calendar sync</nav>
+  <h1>Copy Outlook events to Google Calendar</h1>
+  <p>Compare one week in both calendars. Review the missing time blocks, then import them into the calendar you choose.</p>
+  <fieldset id="work">
+    <section>
+      <h2>Connect ChatGPT</h2>
+      <p>Use your eligible ChatGPT plan to interpret the events you choose to share. You choose which calendar text to send. You can also use an existing Claude or ChatGPT desktop chat in the comparison step.</p>
+      <p id="account" role="status"></p>
+      <button id="signin" type="button">Sign in with ChatGPT</button>
+      <button id="signout" type="button" hidden>Disconnect ChatGPT</button>
+      <label id="model-label" hidden>Model (using ChatGPT plan) <select id="model"></select> · <a href="https://chatgpt.com/settings/usage" target="_blank" rel="noopener">Manage usage</a></label>
+      <a href="https://github.com/open-horizon-labs/browser-recipes/blob/main/docs/calendar-sync.md" target="_blank" rel="noopener">Setup guide</a>
+    </section>
+    <section>
+      <h2>Read the same week in both tabs</h2>
+      <p>Open Outlook Calendar and Google Calendar in Week view, with the destination calendar visible. Check the accounts, dates, and time zones in the tabs.</p>
+      <label>Outlook tab <select id="source"></select></label>
+      <label>Google Calendar tab <select id="destination"></select></label>
+      <button id="refresh">Refresh tabs</button> <button id="read">Read calendars</button>
+      <a href="options.html" target="_blank" rel="noopener">Site access and catalog</a>
+    </section>
+    <section id="snapshots" hidden>
+      <h2>Review what ChatGPT will receive</h2>
+      <p>Remove details you want to keep private. Preserve the dates and times you want compared. Empty or incomplete reads need checking against the original calendars.</p>
+      <label>Outlook events <textarea id="outlook-events" rows="5"></textarea></label>
+      <label>Google Calendar events <textarea id="google-events" rows="5"></textarea></label>
+      <label>First day shown <input id="start" type="date" required></label>
+      <label>Last day shown <input id="end" type="date" required></label>
+      <label>Outlook time zone <input id="source-zone" placeholder="America/New_York"></label>
+      <label>Google Calendar time zone <input id="dest-zone" placeholder="America/New_York"></label>
+      <button id="compare">Send to ChatGPT for comparison</button>
+      <details><summary>Use my desktop chat instead</summary>
+        <p>Prepare the prompt, copy it into a Claude or ChatGPT conversation, then paste the JSON reply here.</p>
+        <button id="prepare">Prepare prompt</button>
+        <label>Prompt to copy <textarea id="prompt" readonly rows="4"></textarea></label>
+        <label>Reply from your chat <textarea id="reply" rows="4"></textarea></label>
+        <button id="use-reply">Review reply</button>
+      </details>
+    </section>
+    <section id="review" hidden>
+      <h2>Review proposed busy blocks</h2>
+      <p>Check each start and end against Outlook. Times use the Outlook time zone you entered. By default imported events are titled Busy. Existing events, conflicts, and unresolved entries stay untouched.</p>
+      <p id="summary"></p><div id="additions"></div>
+      <details><summary>Existing events, conflicts, and unresolved entries</summary><pre id="exceptions"></pre></details>
+      <p>In the selected Google Calendar tab, open Settings → Import &amp; export. Choose the destination account and calendar. Keep this page open.</p>
+      <label><input id="copy-titles" type="checkbox"> Copy event titles to Google Calendar</label>
+      <button id="stage">Stage selected blocks in Google Calendar</button>
+    </section>
+  </fieldset>
+  <p id="status" role="status" aria-live="polite"></p>
+</main></body></html>

@@ -2,11 +2,19 @@
 
 The goal was to let a maintainer use an agent to discover a browser task once, then run the same steps from a scheduled script while the user works in another tab.
 
+## Keep the browser runner independent
+
+The prototype let a person pick an open tab, run a recipe, and review the result in the side panel. During the rewrite we kept the interpreter and moved its only Run control into the CLI. That made an external host a prerequisite even when the caller already lived inside the extension. The restored panel calls the same dispatcher directly. The CLI and ChatGPT helper serve the callers that cross a process boundary. The integration checks exercise the panel with the CLI bridge switched off.
+
 ## Run with Chrome remote debugging disabled
 
 A workflow runner must work in the user’s existing browser with remote debugging disabled. A runner that requires a Chrome DevTools Protocol (CDP) connection would rule out desktops where IT prohibits it, even if it could replay every recipe.
 
 On Linux, the CLI connects to a Unix socket private to the user. Chrome Native Messaging carries the request between the host and the extension. The host registration names the permitted extension ID. The extension checks both the exact origin approved in its settings and Chrome’s host permission before acting on the selected tab. Replay requires neither a debugging port nor the extension’s `debugger` permission. Processes running as the same Linux user can call the bridge while it is enabled. [Host registration](../bridge/browser-recipes) · [Origin checks](../extension/access.js)
+
+## Verify without taking over the desktop
+
+Use a disposable headless browser for installation, side-panel, and permission-dialog tests. To check a live signed-in tab while its owner works, use the installed runtime’s background commands. If setup needs a foreground prompt, leave it for the user to open when convenient. Desktop focus switches, pointer clicks, and synthetic keystrokes defeat the reason to use this runtime.
 
 ## Confirm writes in the app
 

@@ -1,0 +1,120 @@
+[
+  {
+    "id": "outlook",
+    "title": "Outlook on the web",
+    "targets": {
+      "first-message": "[aria-label=\"Message list\"] [role=option][aria-posinset=\"1\"]",
+      "calendar-range": "button[aria-label*=\"Jump to a specific date\"]",
+      "calendar-events": "[role=\"main\"] [data-calitemid] [role=\"button\"][aria-label]",
+      "calendar-filter": "button[aria-label=\"Filter applied\"]",
+      "calendar-account": "#owa-me-control-container button, #mectrl_main_trigger"
+    },
+    "recipes": [
+      {
+        "id": "read-calendar-week",
+        "title": "Read the visible Outlook calendar week",
+        "steps": [
+          {
+            "op": "assert",
+            "target": "calendar-range"
+          },
+          {
+            "op": "read",
+            "target": "calendar-range",
+            "as": "range"
+          },
+          {
+            "op": "readList",
+            "target": "calendar-events",
+            "attributes": [
+              "aria-label"
+            ],
+            "as": "events"
+          },
+          {
+            "op": "readList",
+            "target": "calendar-filter",
+            "attributes": [
+              "aria-label"
+            ],
+            "as": "filters"
+          },
+          {
+            "op": "readList",
+            "target": "calendar-account",
+            "attributes": [
+              "aria-label"
+            ],
+            "as": "account"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "google-calendar",
+    "title": "Google Calendar",
+    "targets": {
+      "calendar-range": "[role=\"main\"] h1[aria-label]",
+      "calendar-events": "[role=\"main\"] [data-eventchip][data-eventid][aria-label]:not([data-is-picker]):not([data-eventid^=\"_WL_\"])",
+      "calendar-account": "header a[role=\"button\"][aria-label^=\"Google Account:\"]",
+      "import-button": "button[jsname=\"N8B8lb\"]",
+      "import-file": "input[type=\"file\"][name=\"filename\"]"
+    },
+    "recipes": [
+      {
+        "id": "read-calendar-week",
+        "title": "Read the visible Google Calendar week",
+        "steps": [
+          {
+            "op": "assert",
+            "target": "calendar-range"
+          },
+          {
+            "op": "read",
+            "target": "calendar-range",
+            "as": "range"
+          },
+          {
+            "op": "readList",
+            "target": "calendar-events",
+            "attributes": [
+              "aria-label",
+              "data-eventid"
+            ],
+            "as": "events"
+          },
+          {
+            "op": "readList",
+            "target": "calendar-account",
+            "attributes": [
+              "aria-label"
+            ],
+            "as": "account"
+          }
+        ]
+      },
+      {
+        "id": "stage-calendar-import",
+        "title": "Select an iCalendar file for import",
+        "inputs": {
+          "calendar-file": {
+            "type": "attachment",
+            "required": true
+          }
+        },
+        "steps": [
+          {
+            "op": "assert",
+            "target": "import-button"
+          },
+          {
+            "op": "attach",
+            "target": "import-file",
+            "input": "calendar-file"
+          }
+        ]
+      }
+    ]
+  }
+]

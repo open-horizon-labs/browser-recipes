@@ -3,9 +3,10 @@
   "name": "Browser Recipes",
   "version": "0.1.0",
   "description": "Run reviewed browser recipes on an explicitly selected tab.",
-  "permissions": ["alarms", "nativeMessaging", "scripting", "storage"],
+  "permissions": ["alarms", "nativeMessaging", "scripting", "sidePanel", "storage"],
   "optional_host_permissions": ["http://*/*", "https://*/*"],
   "background": {"service_worker": "background.js", "type": "module"},
   "options_ui": {"page": "options.html", "open_in_tab": true},
-  "action": {"default_title": "Open Browser Recipes settings"}
+  "side_panel": {"default_path": "runner.html"},
+  "action": {"default_title": "Open Browser Recipes"}
 }

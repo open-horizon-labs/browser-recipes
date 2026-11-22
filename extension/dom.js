@@ -1,5 +1,5 @@
 // Chromium serializes this function into the isolated world of the selected document.
-export async function executeDom({ origin, op, selector, input, text, match, attribute, documentPaths }) {
+export async function executeDom({ origin, op, selector, input, text, match, documentPaths, attributes = [] }) {
   const fail = code => ({ ok: false, code });
   const success = value => ({ ok: true, value });
   if (location.origin !== origin) return fail('ORIGIN_CHANGED');
@@ -9,7 +9,7 @@ export async function executeDom({ origin, op, selector, input, text, match, att
     const style = getComputedStyle(element);
     if (style.visibility !== 'visible') return false;
     return element.getClientRects().length > 0 ||
-      (['read', 'readAll', 'assert'].includes(op) && style.display === 'contents' &&
+      (['read', 'readList', 'assert'].includes(op) && style.display === 'contents' &&
         [...element.children].some(child => child.getClientRects().length > 0 &&
           getComputedStyle(child).visibility === 'visible'));
   }
@@ -74,6 +74,7 @@ export async function executeDom({ origin, op, selector, input, text, match, att
     return success({ origin, controls });
   }
 
+
   let element;
   let observedTarget = false;
   const deadline = Date.now() + 3500;
@@ -86,11 +87,25 @@ export async function executeDom({ origin, op, selector, input, text, match, att
         clean(match.within ? candidate.closest(match.within)?.innerText : labelOf(candidate, match.attribute), 131072)
           === clean(match.text, 16384))
         : candidates;
-      if (op === 'readAll') {
-        const values = [...matches].filter(candidate => visible(candidate) && !credential(candidate) &&
-          (attribute || !candidate.closest('input,select,textarea,[contenteditable]'))).map(candidate =>
-            (labelOf(candidate, attribute) ?? '').trim());
-        return values.length <= 2000 && JSON.stringify(values).length <= 131072 ? success(values) : fail('OUTPUT_TOO_LARGE');
+      if (op === 'readList') {
+        const rows = [];
+        for (const item of matches) {
+          if (!visible(item)) continue;
+          const checkbox = item.matches('input[type="checkbox"]');
+          if (credential(item) || (!checkbox && item.closest('input,select,textarea,[contenteditable]'))) {
+            return fail('UNSUPPORTED_CONTROL');
+          }
+          const renderedText = checkbox ? '' : item.innerText.trim();
+          const values = Object.fromEntries(attributes.flatMap(name => {
+            const value = name === 'checked' && checkbox ? String(item.checked) : labelOf(item, name);
+            return value === null ? [] : [[name, value]];
+          }));
+          if (rows.length === 500 || renderedText.length > 4096 || Object.values(values).some(value => value.length > 4096)) {
+            return fail('OUTPUT_TOO_LARGE');
+          }
+          rows.push({ text: renderedText, attributes: values });
+        }
+        return success(rows);
       }
       if (op === 'assertValues') {
         const controls = [...matches].filter(visible);

@@ -192,7 +192,7 @@ test('exact caller text is forwarded as a match operand, never added to a select
     steps: [
       { op: 'click', selector: 'button', match: { input: 'label', attribute: 'aria-label' } },
       { op: 'assertValue', selector: '#message', input: 'value' },
-      { op: 'readAll', selector: '.receipt', attribute: 'aria-label', as: 'receipts' },
+      { op: 'readList', selector: '.receipt', attributes: ['aria-label'], as: 'receipts' },
     ],
   }];
   validateCatalog([tested]);
@@ -203,7 +203,7 @@ test('exact caller text is forwarded as a match operand, never added to a select
   assert.equal(operations[0].selector, 'button');
   assert.equal(operations[0].match.text, label);
   assert.equal(operations[1].input, 'Reviewed');
-  assert.equal(operations[2].attribute, 'aria-label');
+  assert.deepEqual(operations[2].attributes, ['aria-label']);
   await assert.rejects(dispatch('run', request({ recipeId: 'pick', inputs: { value: 'Reviewed' } })), { code: 'INVALID_INPUTS' });
 });
 

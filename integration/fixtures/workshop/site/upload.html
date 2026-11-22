@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Workshop fixture upload</title>
+<label>Message <textarea id="message"></textarea></label>
+<label>Attachment <input id="file" type="file"></label>
+<output id="receipt"></output>
+<script>
+document.getElementById('file').addEventListener('change', async event => {
+  const file = event.target.files[0];
+  const message = document.getElementById('message').value;
+  document.getElementById('receipt').textContent = message + ' ' + file.name + ' ' + await file.text();
+});
+</script>
+</html>

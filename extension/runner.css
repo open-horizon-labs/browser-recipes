@@ -1,0 +1,25 @@
+main { max-width: 48rem; }
+.runner-header { display: flex; align-items: baseline; flex-wrap: wrap; justify-content: space-between; gap: .75rem 1.5rem; margin-bottom: 2rem; }
+.runner-header h1 { margin: 0; font-size: 1.75rem; }
+.runner-header nav { display: flex; gap: 1rem; }
+a { text-underline-offset: .18em; }
+fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.field { display: grid; gap: .35rem; margin-bottom: 1rem; }
+.field label { font-weight: 600; }
+.tab-field { grid-template-columns: minmax(0, 1fr) auto; }
+.tab-field label { grid-column: 1 / -1; }
+select { min-width: 0; min-height: 2.5rem; padding: .4rem .5rem; border-radius: .4rem; border: 1px solid ButtonBorder; font: inherit; }
+.field textarea { margin: 0; border-radius: .4rem; }
+.field input[type="file"] { max-width: 100%; }
+.primary { color: HighlightText; background: Highlight; border-color: Highlight; font-weight: 600; }
+button:enabled:hover { filter: brightness(.93); }
+button:disabled { opacity: .55; cursor: default; }
+.status { margin-top: 1rem; font-weight: 400; }
+.status[data-error] { font-weight: 600; }
+#results h2 { margin: .6rem 0 .75rem; }
+#output h3 { margin: 1rem 0 .3rem; font-size: 1rem; overflow-wrap: anywhere; }
+#output pre { padding: .75rem; max-height: 28rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid color-mix(in srgb, CanvasText 24%, Canvas); border-radius: .4rem; margin: .3rem 0 .9rem; }
+@media (max-width: 26rem) {
+  .tab-field { grid-template-columns: minmax(0, 1fr); }
+  .tab-field button { justify-self: start; }
+}

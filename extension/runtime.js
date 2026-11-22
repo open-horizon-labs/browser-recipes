@@ -110,8 +110,7 @@ async function runStep(browser, tabId, adapter, step, inputs) {
     origin, op: step.op, selector: step.selector ?? adapter.targets?.[step.target],
     input: step.input ? inputs[step.input] : step.value, text: step.text,
     match: step.match && { ...step.match, text: step.match.text ?? inputs[step.match.input] },
-    attribute: step.attribute,
-    documentPaths: adapter.documentPaths,
+    documentPaths: adapter.documentPaths, attributes: step.attributes,
   });
   if (step.op === 'click') {
     await readyTab(browser, tabId, origin);
@@ -222,7 +221,13 @@ export function createDispatcher(browser, loadCatalog) {
       }
       if (command === 'catalog') {
         return granted.map(({ id, title, origin, recipes }) => ({
-          id, title, origin, recipes: recipes.map(({ id, title, inputs = {} }) => ({ id, title, inputs })),
+          id, title, origin, recipes: recipes.map(({ id, title, inputs = {}, steps }) => ({
+            id, title,
+            inputs: Object.fromEntries(Object.entries(inputs).map(([name, definition]) => [
+              name,
+              steps.some(step => step.input === name) ? { ...definition, required: true } : definition,
+            ])),
+          })),
         }));
       }
       const tabs = await browser.tabs.query({});

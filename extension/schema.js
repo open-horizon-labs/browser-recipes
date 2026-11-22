@@ -3,7 +3,7 @@ const reserved = new Set(['constructor', 'prototype', '__proto__']);
 const fields = {
   navigate: ['path'],
   read: ['selector', 'as'],
-  readAll: ['selector', 'as', 'attribute'],
+  readList: ['selector', 'as', 'attributes'],
   readValue: ['selector', 'as'],
   document: ['selector', 'as'],
   click: ['selector'],
@@ -111,8 +111,13 @@ export function validateRecipe(recipe, adapter) {
     }
     if (step.op === 'navigate') expect(sameOriginPath(step.path, origin), location);
     if (step.op === 'document') expect(documentPaths.length > 0, location);
+    if (step.op === 'readList' && step.attributes !== undefined) {
+      const attributes = step.attributes;
+      expect(Array.isArray(attributes) && attributes.length <= 8 && new Set(attributes).size === attributes.length &&
+        attributes.every(name => typeof name === 'string' &&
+          /^(?:aria-(?:label|checked|selected|expanded)|data-(?:eventid|calitemid|datekey)|checked|label)$/.test(name)), location);
+    }
     if (step.op === 'readAttachment') expect(documentPaths.includes(step.allowedPathPrefix), location);
-    if (step.op === 'readAll') expect(step.attribute === undefined || ['aria-label', 'label'].includes(step.attribute), location);
     if (step.op === 'assert' && Object.hasOwn(step, 'text')) expect(string(step.text, 1024), location);
     if (step.op === 'assertValue' && Object.hasOwn(step, 'value')) {
       expect(!Object.hasOwn(step, 'input') && typeof step.value === 'string' && step.value.length <= 16384, location);
