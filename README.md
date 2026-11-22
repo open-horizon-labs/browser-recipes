@@ -1,10 +1,10 @@
 # Tab Recipes
 
-Tab Recipes lets you use an LLM to figure out a task in a browser app once, then give that task to a script. The agent saves what it learned as a recipe you can read, test, and share. On the next run, a program or another agent calls the recipe by name. The extension executes its steps in the selected tab while you keep working in the foreground. Replay requires no model call.
+An LLM can inspect a browser app and write a JSON recipe for a recurring task. Once you’ve tested the recipe, a script can run it by ID. The Chromium extension executes the steps in a specific open tab, using that tab’s session. You can work in another tab during the run. Replay requires no model call.
 
-## How an app becomes callable
+## Example: read an expense report in Concur
 
-Take “read the first active expense report in Concur.” To do that by hand, you open Manage Expenses, check that you landed on the right page, and read the first report card. The community Concur recipe expresses those same three steps.
+The recipe opens Manage Expenses, checks the heading, and returns the visible text of the first active report card.
 
 ```json
 [
@@ -14,19 +14,9 @@ Take “read the first active expense report in Concur.” To do that by hand, y
 ]
 ```
 
-The **adapter** defines what `first-report` means on this site. It gives the control a CSS selector and declares the exact origin where it can be used. The **recipe** defines what to do with that control and names the output. If Concur changes the report card markup, a maintainer can update the selector in one place. Callers still ask for the same recipe and read the same `summary` field. [Concur adapter and recipe](https://github.com/open-horizon-labs/tab-recipes-catalog/tree/main/adapters/concur)
+The adapter maps `manage-expenses` and `first-report` to CSS selectors on the US2 Concur origin. The caller receives the report text in `outputs.summary`. If Concur changes its markup, a contributor can update the selector and users can import the revised adapter. [Concur adapter and recipe](https://github.com/open-horizon-labs/tab-recipes-catalog/tree/main/adapters/concur)
 
-Once you grant access to the site, a caller lists the available recipes and tabs, then sends the recipe ID, tab ID, and inputs through the local CLI. The extension acts on the page in that tab’s browser session. The sequence is fixed, but the data is live. For Concur, the result contains the report summary visible to the signed-in user at the time of the call.
-
-This repository owns the extension, the Linux CLI bridge, and the recipe interpreter. The community repository owns the site definitions. Someone who knows an app can contribute a workflow or repair a target, and users can import the updated adapter independently of an extension release. The catalog includes Concur, Gmail, Outlook, and Hacker News. [Community catalog](https://github.com/open-horizon-labs/tab-recipes-catalog)
-
-## Discover, test, and repair a recipe
-
-Enable developer tools in the extension options when you want an agent to author a recipe. On a tab you have granted access to, `dev.inspect` exposes controls and same-origin navigation links. The agent can use that information to name targets, write steps, and run a draft with `dev.test`. Review the JSON and import the finished adapter. You can then turn developer tools off and call the saved recipe with `run`. [Recipe authoring guide](docs/recipes.md)
-
-For a write, include a check that the app accepted the change. In the prototype, a date field looked filled in a background tab while the app still held the old value. Reading back a saved record catches that failure. For a task involving an attachment, the adapter can declare a download path so the extension can fetch the file using the tab’s session. It extracts text locally from PDFs and Office documents and can return the original bytes for a scan or image. [Design notes](docs/design.md)
-
-When a step fails, execution stops. The error identifies the recipe, failed step, operation, and named target when available. It also lists the steps that completed and how long they took. Give that record and the installed catalog revision to an agent so it can inspect the changed page and test a repair. Check what the app saved before retrying a write. Developer mode makes recent failures available through `dev.failures`. [CLI commands](bridge/README.md)
+This repository contains the extension, interpreter, and Linux CLI. Adapters for Concur, Gmail, Outlook, and Hacker News live in the [community catalog](https://github.com/open-horizon-labs/tab-recipes-catalog).
 
 ## First run on Linux
 
@@ -53,7 +43,13 @@ node ../tab-recipes-catalog/scripts/pack.mjs > /tmp/tab-recipes-catalog.json
 ./bridge/tab-recipes run '{"tabId":123,"adapterId":"hacker-news","recipeId":"front-page","inputs":{}}'
 ```
 
-A successful run returns a `runId` and the current headline in `outputs.headline`. You can use that field directly in a shell script.
+A successful run returns a `runId` and the current headline in `outputs.headline`.
+
+## Write or fix a recipe
+
+Enable developer tools in the extension options. Run `dev.inspect` to list controls and links on a permitted tab. Write the steps, try them with `dev.test`, then import the tested recipe with its adapter. For a write, read back the saved record. For an attachment, declare its download path so the extension can fetch it in the tab’s session. [Recipe format and operations](docs/recipes.md)
+
+If a step fails, the extension stops and returns the step number, operation, target name when available, and a list of completed steps with their timings. Give that error and the installed catalog revision to whoever will fix the recipe. Check what the app saved before retrying a write. [CLI commands](bridge/README.md) · [Design notes](docs/design.md)
 
 ## Access and limits
 
@@ -72,4 +68,4 @@ npx playwright-core install chromium
 npm test
 ```
 
-The Linux integration test serves its own [workshop fixture](integration/fixtures/workshop). Set `CHROMIUM_PATH` to use an installed Chromium build that supports unpacked extensions in headless mode. It creates a disposable browser profile and pregrants a single loopback permission in the test manifest. It then exercises the options UI, origin grant, native host and CLI. Port 8765 must be free.
+The integration test starts Chromium with a temporary profile and serves the [test site](integration/fixtures/workshop) on port 8765. The test manifest grants loopback access. The test grants the site origin through the options UI and runs the CLI against a background tab. Set `CHROMIUM_PATH` to use a local Chromium build with headless extension support.

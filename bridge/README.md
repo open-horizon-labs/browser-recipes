@@ -1,12 +1,13 @@
 # Local CLI bridge
 
-The bridge uses Chrome Native Messaging and a Unix domain socket inside a
-private directory for your Linux user. Python 3.9 or newer is required.
-Programs running as your Linux user can send commands when the bridge is
-enabled and connected. They act through Tab Recipes in the connected browser.
+The CLI sends JSON over a Unix socket to a native messaging host. The host forwards requests to the extension and returns its replies. The socket is private to your Linux user. Any process running as that user can send commands while the bridge is connected.
+
+## Connect a browser
+
+Use Python 3.9 or later.
 
 1. Load Tab Recipes as an unpacked extension and copy its ID from the browser's Extensions page.
-2. Register the executable for that ID. Run from the repository root:
+2. From the repository root, register the executable for that ID.
 
    ```sh
    ./bridge/tab-recipes install YOUR_EXTENSION_ID
@@ -14,8 +15,7 @@ enabled and connected. They act through Tab Recipes in the connected browser.
 
    For Chromium, add `--browser chromium`. The manifest uses the absolute
    path of this checkout. Register again if you move it.
-3. Open Tab Recipes Options and enable the local bridge. Only one browser
-   connection can own the local socket at a time.
+3. Open Tab Recipes Options and enable the local bridge. Only one browser connection can use the socket at a time.
 
 ## Commands
 
@@ -32,15 +32,11 @@ Pass an argument object as a JSON string or use `-` to read JSON from stdin.
 `dev.test` accepts an object with `tabId`, `adapterId`, `recipe`, and
 `inputs`. Use `catalog` and `tabs` to obtain identifiers from the browser.
 
-Successful commands print the JSON result to stdout. Errors from the browser
-print a JSON object with an `error` key to stdout and exit with status 1.
-Local bridge errors use stderr and exit with status 1. The bridge reports
-`BUSY` if a second command arrives during an active command. A timeout means
-the bridge did not receive the result before its deadline. The browser action
-may already have run.
+On success the CLI prints JSON to stdout. On failure it exits with status 1. Browser errors appear under `error` on stdout. Local bridge errors go to stderr.
 
-To disconnect the bridge, disable it in Options. To remove the registration,
-delete the manifest whose path was printed by `install`.
+`BUSY` means another command is running. A timeout means the browser did not reply before the deadline. Check the page before retrying a command that writes data.
+
+Disable the bridge in Options to disconnect. To unregister the host, delete the manifest at the path printed by `install`.
 
 ## Tests
 

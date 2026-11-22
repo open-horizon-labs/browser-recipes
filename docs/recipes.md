@@ -14,7 +14,7 @@ An adapter describes a single exact HTTP(S) origin. Use a separate adapter for a
 ]
 ```
 
-Call `tabs` to get the explicit tab ID and `dev.inspect` to see candidate controls and same-origin links. Use a draft to confirm the selector matches exactly one visible element. A stable app-owned ID, role or data attribute generally survives layout changes better than a long chain of child indices. Store shared selectors under `targets` so recipes can refer to a control by name.
+Run `tabs` to get the tab ID, then `dev.inspect` to list controls and same-origin links. Choose a selector that matches one element. Prefer an app-defined ID or data attribute when available. Put the selector in `targets` to reuse it across recipes.
 
 ## Recipe format
 
@@ -31,12 +31,12 @@ A recipe contains an `id`, `title`, ordered `steps` and optionally `inputs`. Ide
 | `readAttachment` | `target`, `allowedPathPrefix`, `as` | Fetch the target link in the tab's session. The prefix must appear in `documentPaths`. |
 | `attach` | `target`, `input` | Set a file input from a JSON object with `name`, `mimeType` and `base64` (up to 384 KiB of input bytes). |
 
-A step that takes `target` can instead supply a CSS `selector` directly. Every step resolves its selector against the current top-level document. The runner stops on a missing, hidden or ambiguous target. A recipe should read back the app's committed value after a write when the caller needs evidence that the change took effect.
+A step that takes `target` can instead supply a CSS `selector` directly. Every step resolves its selector against the current top-level document. A missing or ambiguous target stops the run. Most operations require a visible element. After a write, read back the saved value to check that the app accepted it.
 
 ## Attachments
 
-Declare a directory with a trailing slash, as in `"documentPaths":["/files/"]`. An entry such as `/download.do` grants that exact endpoint and accepts query parameters. Same-origin downloads reject redirects and are bounded at 8 MiB. Conversion runs locally for text PDFs, DOCX, XLSX and PPTX. It returns `{kind:"markdown",name,markdown}` when text is available. The alternate result is `{kind:"file",name,mimeType,base64}`. An image-only PDF can go directly to a caller that understands PDF files. An LLM client decides whether to transmit a document.
+Declare a directory with a trailing slash, as in `"documentPaths":["/files/"]`. An entry such as `/download.do` grants that exact endpoint and accepts query parameters. The extension rejects redirects and limits downloads to 8 MiB. It converts text PDFs, DOCX, XLSX and PPTX locally and returns `{kind:"markdown",name,markdown}` when text is available. For an image, scan, or file it cannot convert, it returns `{kind:"file",name,mimeType,base64}`. The caller decides whether to send the file to a model.
 
-## Failure handoff
+## Repair a failed recipe
 
-Save the CLI's error JSON and the catalog commit you installed. Open developer tools in extension settings and use `dev.failures` for recent failures. Compare the operation and step number with the versioned recipe, use `dev.inspect` to find the current control, and exercise the patch using `dev.test`. A successful draft can be saved as its own file under the adapter’s `recipes/` directory and shared through a catalog pull request. Turn developer tools off when you return to ordinary replay.
+Keep the CLI error and the catalog commit you ran. With developer tools enabled, `dev.failures` lists recent failures. Find the reported step in the recipe, inspect its target with `dev.inspect`, and test the change with `dev.test`. Save the corrected recipe in the adapter’s `recipes/` directory. If you changed a shared selector, rerun every recipe that uses it.

@@ -1,22 +1,17 @@
-# Aim and salvage · 2026-11-22
+# Design notes from the hackathon prototype
 
-A maintainer should be able to teach an agent a browser task once, put its recipe through code review, and give the same recipe to a scheduled program. The user can keep working in the foreground. When the app changes, a maintainer should be able to find the broken step from one failed run.
+The goal was to let a maintainer use an agent to discover a browser task once, then run the same steps from a scheduled script while the user works in another tab. Three observations from the prototype shaped the extension.
 
-## What the prototype taught us
+## Confirm writes in the app
 
-The hackathon explored transferring information between signed-in apps. Its documentation records a date field that looked filled but still failed the app's save validation when the tab lacked focus. A DOM mutation is weak evidence of a successful write. A useful recipe checks an app-owned result, such as the saved row or confirmation state. The workshop checks the saved status and reads back the stored response.
+In a background tab, a date field displayed the new value while the app still held the old one. Save validation failed. A write recipe should check the app’s confirmation or read back the saved record. The integration test submits a response and compares the stored text with the input.
 
-Another workflow needed documents behind an authenticated link. A URL alone could not carry the user's access to a separate worker. Fetch in the target tab's session, scope the request to declared paths, convert locally, and preserve a file result for image-only documents. Treat attachment bytes as caller data and keep them out of repair logs.
+## Download attachments in the signed-in tab
 
-The prototype had a development capture loop alongside a panel for reviewed tasks. Those users need different capabilities. A runtime caller needs to choose a tab, bind inputs, execute a known recipe, and receive a result. An author needs to inspect links and controls, try a draft, and investigate failure. Give the user control of authoring access.
+The prototype needed a document behind an authenticated link. A separate process with just the URL lacked the user’s session. The extension fetches the file in the selected tab, checks the adapter’s allowed path, and converts the document locally. For a scan with no extractable text, it returns the file. Failure records omit document bytes and form values.
 
-## Restart decisions
+## Separate authoring from replay
 
-* Keep the browser connection, permission checks, interpreter and error contract in one project. Put site knowledge in community-owned data that can be patched independently. Share target names across recipes so a site change can have one fix.
-* Address tabs explicitly. An open, authenticated, scriptable top-level document is an assumption. Native dialogs, trusted gestures and controls inside inaccessible frames can require a different integration.
-* Use a single machine-readable call path for agents and conventional programs. The runtime owns execution order. The caller owns decisions about retrying a partial write.
-* Use read-only live apps and a local write-and-attachment fixture. These examples and the implementation were authored for this project. Organization-specific workflows and captured sessions are outside the public catalog.
+During discovery an agent needs page labels, links, and permission to try draft steps. A scheduled script needs only the installed recipe, tab ID, and inputs. Users enable discovery and draft execution in extension settings. Site selectors and recipes live in the community catalog so a contributor can fix them independently of the extension.
 
-## Feedback
-
-On each change, exercise an inactive tab while another tab stays selected. Read a result, save and read back a value, and retrieve an attachment. Break one target and use the reported step to repair a draft. If an agent needs browser screenshots or fresh planning on every successful replay, the project has missed its aim. If the handoff contains form values, document bytes or private page text, it exposes more than a maintainer needs.
+The runner stops at the first failed step and reports which earlier steps completed. A caller can then check whether a write took effect before deciding to retry. The browser test breaks a target, checks the error record, and runs a repaired draft while another tab stays selected. [Integration test](../integration/smoke.mjs)
