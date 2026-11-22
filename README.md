@@ -1,5 +1,7 @@
 # Browser Recipes
 
+This repository contains the Chromium extension that runs recipes in signed-in tabs and the CLI that lets scripts call it. The **Browser Recipes Catalog** is the companion repository where contributors share app adapters, recipes, and workflows. Install the extension first, then open **Browse community catalog** in Settings to choose what to run. [Install the extension](docs/getting-started.md) · [Browse or contribute to Browser Recipes Catalog](https://github.com/open-horizon-labs/browser-recipes-catalog)
+
 Many web apps have no Model Context Protocol (MCP) server an agent can call. An agent can still use the app through a browser or computer-use tool. For a recurring task, that often means inspecting the same pages, finding the same controls, and deciding where to click on every run. Most computer-use tools also take over the active window and mouse pointer while the agent works.
 
 Browser Recipes lets an agent inspect the app once and save the navigation, actions, and checks as a JSON recipe. The Chromium extension executes those steps directly in the open tab, using its signed-in session. Replay needs no model call, leaves the foreground tab selected, and keeps your cursor free.
@@ -38,7 +40,9 @@ printf '%s\n' "$agenda" | jq -r '.outputs.events[] | .attributes["aria-label"] /
 
 ## Preview an Outlook to Google Calendar sync
 
-The workflow reads both calendars, sends the event labels and your instruction to ChatGPT, and compares the resulting time blocks. Here, `personal` is the Google Calendar account label.
+The catalog’s Outlook-to-Google workflow specifies which recipes read each calendar. The extension runs those recipes, sends the event labels and your instruction to ChatGPT, and compares the resulting time blocks. [Workflow definition](https://github.com/open-horizon-labs/browser-recipes-catalog/blob/main/workflows/outlook-to-google-calendar.json)
+
+Here, `personal` is the Google Calendar account label.
 
 ```sh
 browser-recipes workflow preview outlook-to-google-calendar \
@@ -67,8 +71,6 @@ The recipe opens Manage Expenses, checks the heading, and returns the visible te
 ```
 
 The adapter maps `manage-expenses` and `first-report` to CSS selectors on the US2 Concur origin. The caller receives the report text in `outputs.summary`. If Concur changes its markup, a contributor can update the selector and users can import the revised adapter. [Concur adapter and recipe](https://github.com/open-horizon-labs/browser-recipes-catalog/tree/main/adapters/concur)
-
-This repository contains the extension, interpreter, ChatGPT helper, and optional Linux CLI. Adapters for Concur, Gmail, Outlook, Google Calendar, and Hacker News live in the [community catalog](https://github.com/open-horizon-labs/browser-recipes-catalog).
 
 ## First run on Linux
 
