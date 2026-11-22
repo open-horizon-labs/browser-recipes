@@ -14,7 +14,7 @@ Recipe definitions describe the inputs, output names, operation kind and effect.
 For the catalog’s headline comparison, replace 123 with your Hacker News tab ID.
 
 ```sh
-./bridge/browser-recipes runs.start '{"kind":"workflow","workflowId":"compare-hacker-news","tabs":{"news":123}}'
+./bridge/browser-recipes runs.start '{"kind":"workflow","workflowId":"filter-hacker-news","tabs":{"news":123}}'
 ./bridge/browser-recipes runs.start '{"kind":"recipe","adapterId":"hacker-news","recipeId":"front-page","tabId":123,"inputs":{}}'
 ```
 
