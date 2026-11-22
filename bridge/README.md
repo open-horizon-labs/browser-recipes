@@ -61,10 +61,10 @@ In **Settings → Site access**, enter the exact identity shown by the app, ente
 
 ```sh
 ./bridge/browser-recipes accounts.list
-./bridge/browser-recipes accounts.label '{"adapterId":"outlook","label":"alixpartners"}'
-./bridge/browser-recipes accounts.label '{"adapterId":"google-calendar","label":"artium"}'
-./bridge/browser-recipes run --adapter outlook --account alixpartners --recipe read-calendar-week
-./bridge/browser-recipes runs.start '{"kind":"workflow","workflowId":"outlook-to-google-calendar","accounts":{"source":"alixpartners","destination":"artium"},"inputs":{"firstDay":"2026-11-08","lastDay":"2026-11-14","sourceTimeZone":"America/New_York","destinationTimeZone":"America/New_York"}}'
+./bridge/browser-recipes accounts.label '{"adapterId":"outlook","label":"217castle.com"}'
+./bridge/browser-recipes accounts.label '{"adapterId":"google-calendar","label":"personal"}'
+./bridge/browser-recipes run --adapter outlook --account 217castle.com --recipe read-calendar-week
+./bridge/browser-recipes runs.start '{"kind":"workflow","workflowId":"outlook-to-google-calendar","accounts":{"source":"217castle.com","destination":"personal"},"inputs":{"firstDay":"2026-11-08","lastDay":"2026-11-14","sourceTimeZone":"America/New_York","destinationTimeZone":"America/New_York"}}'
 ```
 
 Add `--inputs '{"first-day":"2026-11-08","last-day":"2026-11-14"}'` for a date range. For string values, you can also repeat `--input NAME=VALUE` as in `workflow preview`. To call the CLI as `browser-recipes` from any directory, put the executable on your PATH.
@@ -77,7 +77,7 @@ Pass account labels by workflow role and named workflow inputs. This command use
 
 ```sh
 ./bridge/browser-recipes workflow preview outlook-to-google-calendar \
-  --account source=alixpartners --account destination=artium \
+  --account source=217castle.com --account destination=personal \
   --input firstDay=2026-11-08 --input lastDay=2026-11-14 \
   --input sourceTimeZone=America/New_York --input destinationTimeZone=America/New_York \
   --prompt 'Ignore Google Calendar holidays and skip canceled Outlook events.'

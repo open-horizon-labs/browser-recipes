@@ -12,20 +12,43 @@ Open Browser Recipes from the toolbar, choose a tab and an installed recipe, sup
 
 Choose **Workflows** to run several recipes in sequence. Pick an installed workflow and assign its tabs. A workflow can read from several apps, compare results locally, ask you to review data for ChatGPT, and pause for approval before a write. **Sign in with ChatGPT** connects the built-in agent to your ChatGPT plan. A script or agent can start either a recipe or a workflow through the optional Linux CLI. Open **Runs** to inspect the same execution, follow data between steps, or handle a sign-in or submission request. [Calling recipes and workflows](docs/runs.md)
 
-## Example: show today’s Outlook events from the shell
+## Read Outlook events from the shell
 
-Suppose a morning script needs to print your Outlook agenda. The following illustrates a proposed `today-events` recipe. The catalog ships Outlook recipes for the first mail row and the visible calendar week. [Available Outlook recipes](https://github.com/open-horizon-labs/browser-recipes-catalog/tree/main/adapters/outlook)
-
-With the calendar recipe installed, use the ID of your signed-in Outlook tab in place of `123`. This shell example uses `jq` to print the returned agenda text.
+Read the visible calendar week in a background tab. Here, `217castle.com` is the label configured for the signed-in Outlook account. [Set up the CLI and account labels](bridge/README.md#run-by-account-label)
 
 ```sh
-agenda=$(./bridge/browser-recipes run '{"tabId":123,"adapterId":"outlook","recipeId":"today-events","inputs":{}}') || exit 1
-printf '%s\n' "$agenda" | jq -er '.outputs.agenda'
+browser-recipes run --adapter outlook --account 217castle.com --recipe read-calendar-week
 ```
 
-The recipe would open the calendar’s day view, select **Today**, wait for the day’s agenda to load, and read the displayed event times and titles. Outlook’s calendar time zone determines “today.” On an empty day the recipe should return Outlook’s empty-agenda text. If the agenda control is missing, the run should fail.
+For a specific date range, pass both dates as JSON. The recipe returns the matching rows in `outputs.events`.
 
-Every decision at run time is specified in advance. The shell passes a recipe ID, the extension executes fixed steps in the background tab, and `jq` prints one field. No prompt, model call, or cursor movement is involved.
+```sh
+browser-recipes run --adapter outlook --account 217castle.com --recipe read-calendar-week \
+  --inputs '{"first-day":"2026-11-08","last-day":"2026-11-14"}'
+```
+
+For a daily agenda, pass the same date twice. This example uses the shell’s local date and prints each event from the JSON result.
+
+```sh
+today=$(date +%F)
+agenda=$(browser-recipes run --adapter outlook --account 217castle.com --recipe read-calendar-week \
+  --input first-day="$today" --input last-day="$today") || exit 1
+printf '%s\n' "$agenda" | jq -r '.outputs.events[] | .attributes["aria-label"] // .text'
+```
+
+## Preview an Outlook to Google Calendar sync
+
+The workflow reads both calendars, sends the event labels and your instruction to ChatGPT, and compares the resulting time blocks. Here, `personal` is the Google Calendar account label.
+
+```sh
+browser-recipes workflow preview outlook-to-google-calendar \
+  --account source=217castle.com --account destination=personal \
+  --input firstDay=2026-11-08 --input lastDay=2026-11-14 \
+  --input sourceTimeZone=America/New_York --input destinationTimeZone=America/New_York \
+  --prompt 'Ignore Google Calendar holidays and skip canceled Outlook events.'
+```
+
+The command stops at preview. A script can read the proposed imports from `choices` and inspect overlaps and unresolved events in `details`. [Calendar workflow guide](docs/calendar-sync.md)
 
 ## Running on a managed desktop
 
