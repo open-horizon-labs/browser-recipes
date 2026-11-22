@@ -65,7 +65,9 @@ try {
     channel: 'chromium', headless: true, executablePath: process.env.CHROMIUM_PATH,
     args: [
       '--load-extension=' + stagedExtension, '--disable-extensions-except=' + stagedExtension,
-      '--no-proxy-server', ...(verifyUi5 ? ['--disable-features=LocalNetworkAccessChecks'] : []), verifyUi5
+      '--no-proxy-server',
+      // Chromium can block the fake launchpad's 127.0.0.1 to localhost iframe.
+      ...(verifyUi5 ? ['--disable-features=LocalNetworkAccessChecks'] : []), verifyUi5
         ? '--host-resolver-rules=MAP localhost 127.0.0.1'
         : '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1',
     ],
