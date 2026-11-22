@@ -144,7 +144,7 @@ test('automatic recipe launch uses the best matching open tab or opens an inacti
     assert.deepEqual(query,{lastFocusedWindow:true});
     return [recent,tab];
   };
-  const recipe = {entryPath:'/app/week'};
+  const recipe = {entryPath:'/app/week',steps:[{op:'click'}]};
   assert.equal((await findRecipeTab(browser,adapter,recipe)).tabId,7);
   assert.equal((await findRecipeTab(browser,{...adapter,backgroundOnly:true},recipe)).tabId,9);
   assert.deepEqual(calls,[]);
@@ -157,4 +157,14 @@ test('automatic recipe launch uses the best matching open tab or opens an inacti
   assert.equal((await findRecipeTab(browser,adapter,{entryPath:'/app/day'})).tabId,8);
   fresh.url = 'https://id.example/login';
   assert.equal((await findRecipeTab(browser,adapter,{entryPath:'/app/day'})).needsAuth,true);
+});
+
+test('resuming an in-place read accepts the signed-in app page while it is selected', async () => {
+  const {browser,tab} = fixture('https://app.example/app/week');
+  tab.active = true;
+  const a = {...adapter,backgroundOnly:true};
+  const recipe = {steps:[{op:'navigate',path:'/app/week'},{op:'read'}]};
+  assert.equal((await resolveConnection(browser,[a],role,7,recipe)).needsAuth,false);
+  const {findRecipeTab} = await import('../extension/run-connection.js');
+  assert.equal((await findRecipeTab(browser,a,recipe,7)).tabId,7);
 });

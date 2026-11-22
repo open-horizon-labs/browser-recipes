@@ -229,3 +229,22 @@ test('a background-only adapter stops before injecting into an active tab', asyn
   await assert.rejects(dispatch('run', request()), { code: 'ACTIVE_TAB' });
   assert.deepEqual(operations, []);
 });
+
+test('an active app page allows an in-place read without relaxing the background guard for navigation', async () => {
+  const {browser,tabs,operations} = mockBrowser();
+  tabs[0].active = true;
+  tabs[0].url = adapter.origin + '/ticket';
+  browser.tabs.update = async () => assert.fail('An in-place read navigated the tab');
+  const recipe = {id:'summary',title:'Summary',effect:'read',steps:[
+    {op:'navigate',path:'/ticket'},
+    {op:'assert',target:'name'},
+    {op:'read',target:'name',as:'summary'},
+  ]};
+  const a = {...adapter,backgroundOnly:true,recipes:[recipe]};
+  const dispatch = createDispatcher(browser,async () => [a]);
+  const args = {tabId:44,adapterId:a.id,recipeId:recipe.id};
+  assert.equal((await dispatch('run',args)).outputs.summary,'Ticket');
+  assert.deepEqual(operations.map(step=>step.op),['assert','read']);
+  tabs[0].url = adapter.origin + '/other';
+  await assert.rejects(dispatch('run',args),{code:'ACTIVE_TAB'});
+});

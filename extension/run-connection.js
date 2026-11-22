@@ -1,5 +1,5 @@
 import {originOf, RecipeError} from './schema.js';
-import {adapterGranted, assertSiteOperation, boundAccount, frameTarget, withinPaths} from './scope.js';
+import {adapterGranted, assertSiteOperation, boundAccount, canReadActiveTab, frameTarget, withinPaths} from './scope.js';
 import {roleAdapters} from './workflow.js';
 
 const fail = (code, message) => { throw new RecipeError(code, message); };
@@ -30,8 +30,8 @@ async function approved(browser, adapter) {
 }
 
 // This check runs only on approved app documents, never on a sign-in provider.
-async function inspectApp(browser, adapter, tab, identity) {
-  if (adapter.backgroundOnly && tab.active) fail('ACTIVE_TAB', 'Return to the run in another tab before resuming this background-only adapter.');
+async function inspectApp(browser, adapter, tab, identity, recipe) {
+  if (adapter.backgroundOnly && tab.active && !canReadActiveTab(adapter,recipe,tab)) fail('ACTIVE_TAB', 'Return to the run in another tab before resuming this background-only adapter.');
   if (!adapter.identity && !adapter.auth?.signedOutSelector) return false;
   await assertSiteOperation(browser, adapter, 'read');
   if (adapter.auth?.signedOutSelector) {
@@ -49,7 +49,7 @@ async function inspectApp(browser, adapter, tab, identity) {
   return false;
 }
 
-export async function resolveConnection(browser, adapters, role, tabId) {
+export async function resolveConnection(browser, adapters, role, tabId, recipe) {
   const candidates = roleAdapters(role).map(id => adapters.find(item => item.id === id));
   if (!candidates.length || candidates.some(item => !item)) fail('ADAPTER_NOT_FOUND', 'Install the adapter for this connection.');
   const granted = [];
@@ -82,7 +82,7 @@ export async function resolveConnection(browser, adapters, role, tabId) {
     if (matches.length > 1) fail('TAB_REQUIRED', 'Choose which app tab to use for this run.');
     ({tab, adapter} = matches[0]);
   }
-  const needsAuth = tabState(adapter, tab) !== 'app' || await inspectApp(browser, adapter, tab);
+  const needsAuth = tabState(adapter, tab) !== 'app' || await inspectApp(browser, adapter, tab, undefined, recipe);
   return {adapterId:adapter.id, tabId:tab.id, needsAuth};
 }
 
@@ -101,19 +101,17 @@ export async function findRecipeTab(browser, adapter, recipe, tabId) {
   await approved(browser,adapter);
   const existing = tabId == null ? null : await getTab(browser,tabId);
   if (existing) {
-    if (adapter.backgroundOnly && existing.active && tabState(adapter,existing) === 'app')
-      return {adapterId:adapter.id,tabId,needsBackground:true};
-    return findAccountTab(browser,adapter,undefined,tabId);
+    return findAccountTab(browser,adapter,undefined,tabId,undefined,undefined,recipe);
   }
   const windowTabs = await browser.tabs.query({lastFocusedWindow:true});
   const candidates = windowTabs.filter(tab => tabState(adapter,tab) === 'app' &&
-    (!adapter.backgroundOnly || !tab.active) && !tab.pendingUrl && tab.status !== 'loading' &&
+    (!adapter.backgroundOnly || !tab.active || canReadActiveTab(adapter,recipe,tab)) && !tab.pendingUrl && tab.status !== 'loading' &&
     recipePage(tab,recipe.entryPath,recipe.accountPrefix));
   candidates.sort((a,b) => Number(b.active)-Number(a.active) ||
     (b.lastAccessed ?? 0)-(a.lastAccessed ?? 0) || a.id-b.id);
   for (const tab of candidates) {
     try {
-      if (!await inspectApp(browser,adapter,tab)) return {adapterId:adapter.id,tabId:tab.id};
+      if (!await inspectApp(browser,adapter,tab,undefined,recipe)) return {adapterId:adapter.id,tabId:tab.id};
     } catch (error) {
       if (!['ACCOUNT_CHANGED','ACCOUNT_UNAVAILABLE','FRAME_UNAVAILABLE'].includes(error.code)) throw error;
     }
@@ -126,7 +124,7 @@ export async function findRecipeTab(browser, adapter, recipe, tabId) {
 }
 
 // A labeled run may only inspect tabs for its approved adapter. Keep the chosen tab across handoffs.
-export async function findAccountTab(browser, adapter, identity, tabId, entryPath, accountPrefix) {
+export async function findAccountTab(browser, adapter, identity, tabId, entryPath, accountPrefix, recipe) {
   await approved(browser,adapter);
   const matchesPage = tab => recipePage(tab,entryPath,accountPrefix);
   const existing = tabId == null ? null : await getTab(browser,tabId);
@@ -138,9 +136,9 @@ export async function findAccountTab(browser, adapter, identity, tabId, entryPat
     const connection = {adapterId:adapter.id,tabId:tab.id};
     if (state === 'auth' || state === 'unknown') return {...connection,needsAuth:true};
     if (state !== 'app') fail('ORIGIN_CHANGED','The account tab left the approved app.');
-    if (tab.active && (identity || adapter.backgroundOnly)) return {...connection,needsBackground:true};
+    if (tab.active && (identity || adapter.backgroundOnly && !canReadActiveTab(adapter,recipe,tab))) return {...connection,needsBackground:true};
     try {
-      if (!await inspectApp(browser,adapter,tab,identity)) {
+      if (!await inspectApp(browser,adapter,tab,identity,recipe)) {
         if (!matchesPage(tab)) {
           await browser.tabs.update(tab.id,{url:new URL(entryPath,adapter.origin).href});
           return await waitForAccount(browser,adapter,identity,tab.id);

@@ -208,7 +208,7 @@ export function createRunService({browser,loadBundle,dispatch,allowModel,allowRe
             connection = await findAccountTab(browser,adapter,identity,data.tabs[role],entryPath,entry?.accountPrefix);
           } else if (def.recipe && data.args.autoConnect === true) {
             connection = await findRecipeTab(browser,def.adapter,def.recipe,data.tabs[role]);
-          } else connection = await resolveConnection(browser,adapters,boundRole,data.tabs[role]);
+          } else connection = await resolveConnection(browser,adapters,boundRole,data.tabs[role],def.recipe);
         } catch (error) {
           if (!['ACCOUNT_CHANGED','ACTIVE_TAB'].includes(error.code)) throw error;
           const key = 'connection/' + role;

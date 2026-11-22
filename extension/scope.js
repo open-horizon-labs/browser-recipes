@@ -2,6 +2,16 @@ import { executeDom } from './dom.js';
 import { RecipeError } from './schema.js';
 import { hasOrigin } from './access.js';
 
+// A read can use the foreground page if every step leaves the page unchanged.
+export function canReadActiveTab(adapter, recipe, tab) {
+  if (!recipe || !tab.url || adapter.identity?.reveal || adapter.frame ||
+      recipe.effect === 'write' || recipe.calendarRange) return false;
+  return recipe.steps.every(step =>
+    ['assert','assertValue','assertValues','read','readValue','readList'].includes(step.op) ||
+    (step.op === 'navigate' && !step.under && !step.query &&
+      new URL(step.path,adapter.origin).href === tab.url));
+}
+
 export function operationOrigins(adapter) {
   return [...new Set([adapter.origin, adapter.frame?.origin].filter(Boolean))];
 }

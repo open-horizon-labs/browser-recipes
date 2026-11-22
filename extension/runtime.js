@@ -1,5 +1,5 @@
 import { requestedRange, readCalendarRange } from './calendar-range.js';
-import { adapterGranted, assertSiteOperation, boundAccount, frameTarget, withinPaths } from './scope.js';
+import { adapterGranted, assertSiteOperation, boundAccount, canReadActiveTab, frameTarget, withinPaths } from './scope.js';
 import { hasOrigin } from './access.js';
 import { readAttachment } from './attachments.js';
 import { executeDom } from './dom.js';
@@ -108,11 +108,11 @@ async function navigateTo(browser, tab, adapter, destination) {
   await readyTab(browser, tabId, adapter.origin, current => current.url !== previousUrl);
 }
 
-async function runStep(browser, tabId, adapter, step, inputs, identity) {
+async function runStep(browser, tabId, adapter, step, inputs, identity, recipe) {
   const { origin } = adapter;
   const tab = await readyTab(browser, tabId, origin);
   await assertSiteOperation(browser,adapter,step.op);
-  if (adapter.backgroundOnly && tab.active) throw pageError('ACTIVE_TAB');
+  if (adapter.backgroundOnly && tab.active && !canReadActiveTab(adapter,recipe,tab)) throw pageError('ACTIVE_TAB');
   if (!withinPaths(new URL(tab.url).pathname,adapter.paths)) throw pageError('PATH_NOT_ALLOWED');
   if (adapter.frame && !await hasOrigin(browser,adapter.frame.origin)) throw pageError('PERMISSION_REQUIRED');
   const target = await frameTarget(browser,tabId,adapter);
@@ -198,7 +198,7 @@ export function createDispatcher(browser, loadCatalog) {
       for (const [offset, step] of recipe.steps.entries()) {
         index = offset;
         stepStartedAt = performance.now();
-        const execute = operation => runStep(browser, tabId, adapter, operation, inputs, identity);
+        const execute = operation => runStep(browser, tabId, adapter, operation, inputs, identity, recipe);
         if (bounds && ['events','range'].includes(step.as) && !ranged) {
           const rangeStep = recipe.steps.find(s => s.as === 'range');
           const rowsStep = recipe.steps.find(s => s.as === 'events');

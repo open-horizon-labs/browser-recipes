@@ -284,7 +284,7 @@ async function renderPending(record, parent) {
       auth: 'Sign in in the app tab, then check the connection here.',
       'open-app': 'Open the app tab, then check the connection here.',
       'account-review': 'Switch to the account approved for this app, then check the connection here.',
-      'background-tab': 'Select a different browser tab so the workflow can use its target in the background.',
+      'background-tab': 'Leave the app open, select another browser tab, then continue here.',
     };
     controls.append(node('p', guidance[type]));
     primary('Check connection and continue', () => ({}));
