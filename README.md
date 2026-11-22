@@ -9,7 +9,7 @@ Browser Recipes lets an agent inspect the app once and save the navigation, acti
 ## Features
 
 - **Run in a background tab.** Read Outlook events while you work in another tab. The extension uses the signed-in session, leaves your cursor alone, and works with Chrome remote debugging disabled. [Try the calendar walkthrough](docs/getting-started.md)
-- **Call a recipe from a script or an agent.** Give the Linux CLI a recipe name, account label, and inputs. It returns JSON. If the account needs sign-in, the run pauses and gives you a link to open the app. You can also run the recipe from the extension’s side panel. [CLI examples](bridge/README.md#run-by-account-label)
+- **Run recipes from the side panel.** Pick a recipe for your current tab. If the app needs sign-in, the run pauses and gives you a link to open it. On Linux, scripts and agents can also call recipes through the optional CLI and receive JSON. [CLI examples](bridge/README.md#run-by-account-label)
 - **Combine recipes across apps.** The calendar workflow reads Outlook and Google Calendar, compares time blocks, and shows what it would import. Add a custom ChatGPT instruction such as “skip canceled meetings.” You choose which events to copy and approve the import. [Calendar workflow](docs/calendar-sync.md)
 - **Read attachments through the signed-in session.** A recipe can fetch a document from an allowed app path. The extension extracts text from supported PDFs and Office files locally, or returns the file bytes as base64. [Attachment formats and limits](docs/recipes.md#attachments)
 - **Record a task to draft a recipe.** In developer mode, record your actions or let an agent inspect the page controls. The recording produces editable steps with placeholders for field values. Test the draft against the app before sharing it. [Authoring guide](docs/getting-started.md)
@@ -63,9 +63,9 @@ The command stops at preview. A script can read the proposed imports from `choic
 
 Install **Check expense report and reimbursement status** to see the reports under **Active Reports** in Manage Expenses, with the amounts and statuses Concur displays. Run it from the panel for a quick check or read `outputs.reports` from a script. [Concur recipe](https://github.com/open-horizon-labs/browser-recipes-catalog/blob/main/adapters/concur/recipes/list-active-reports.json)
 
-## First run on Linux
+## Get started
 
-[Follow the getting started guide](docs/getting-started.md) to install the extension, compare two calendars in background tabs, and ask Claude or ChatGPT to help write one for your app.
+Install the Chromium extension on Windows, macOS, or Linux. Sign in with ChatGPT through the local helper on any of those platforms. The optional terminal bridge ships with Linux installation support. [Extension setup](docs/getting-started.md) · [ChatGPT helper setup](docs/chatgpt-agent.md) · [Terminal bridge](bridge/README.md)
 
 ## Write or fix a recipe
 
