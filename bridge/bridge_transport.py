@@ -18,8 +18,7 @@ def private_directory():
         path.mkdir(exist_ok=True)
         return path
     runtime = os.environ.get("XDG_RUNTIME_DIR")
-    base = Path("/tmp") if sys.platform == "darwin" else Path(tempfile.gettempdir())
-    path = Path(runtime) / "tab-recipes" if runtime else base / f"tab-recipes-{os.getuid()}"
+    path = Path(runtime) / "tab-recipes" if runtime else Path("/tmp") / f"tab-recipes-{os.getuid()}"
     path.mkdir(mode=0o700, exist_ok=True)
     info = path.lstat()
     if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
